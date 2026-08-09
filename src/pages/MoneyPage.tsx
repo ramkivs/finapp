@@ -3,6 +3,7 @@ import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { CurrencyValue } from '../components/CurrencyValue';
 import { Search, Download, Plus, ChevronDown, Calendar } from 'lucide-react';
+import { TransactionType } from '../domain/types';
 
 interface Props {
   openModal: (modalName: 'modal-income' | 'modal-expense' | 'modal-transfer' | 'modal-custom-date') => void;
@@ -41,7 +42,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
     setDateRange(range);
     setDateMenuOpen(false);
     if (range === '12M') {
-      setFilterType('Income');
+      setFilterType('INCOME');
     }
   };
 
@@ -175,7 +176,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
           {/* Filter Bar */}
           <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1 inline-flex gap-1 shadow-sm">
-              {(['Expense', 'Income', 'Transfer', 'All'] as const).map(pill => (
+              {(['EXPENSE', 'INCOME', 'TRANSFER', 'All'] as const).map(pill => (
                 <button
                   key={pill}
                   onClick={() => setFilterType(pill)}
@@ -185,7 +186,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
-                  {pill}
+                  {pill === 'EXPENSE' ? 'Expense' : pill === 'INCOME' ? 'Income' : pill === 'TRANSFER' ? 'Transfer' : 'All'}
                 </button>
               ))}
             </div>
@@ -229,7 +230,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
           {/* Table or Empty State */}
           {filtered.length === 0 ? (
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-16 text-center text-gray-500 shadow-sm">
-              <p className="mb-5 text-sm">No expenses recorded yet in this date range. Add your first entry above.</p>
+              <p className="mb-5 text-sm">No transactions recorded yet in this date range. Add your first entry above.</p>
               <button
                 onClick={() => handleSelectRange('12M')}
                 className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-xs hover:bg-green-100 hover:text-green-700 transition"
@@ -259,8 +260,8 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
                     {filtered.map(row => {
-                      const isInc = row.type === 'Income';
-                      const isTr = row.type === 'Transfer';
+                      const isInc = row.type === 'INCOME';
+                      const isTr = row.type === 'TRANSFER';
                       return (
                         <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                           <td className="py-3.5 px-6 font-medium">{row.dateStr}</td>
