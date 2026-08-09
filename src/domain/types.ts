@@ -9,7 +9,13 @@ export type FinancialMetricName =
   | 'NET_WORTH'
   | 'TTM_REALIZED_DIVIDEND'
   | 'MONTHLY_AVERAGE_DIVIDEND'
-  | 'MTD_REALIZED_DIVIDEND';
+  | 'MTD_REALIZED_DIVIDEND'
+  | 'EMERGENCY_FUND_COVERAGE'
+  | 'ACTIVE_INSURANCE_POLICY_TOTAL'
+  | 'SIP_COMMITMENT_MONTHLY'
+  | 'DIVIDEND_YIELD_TTM'
+  | 'NET_WORTH_CAGR'
+  | 'EMERGENCY_FUND_GOAL';
 
 export type FinancialSeriesName =
   | 'MONTHLY_DIVIDEND_HISTOGRAM';
@@ -21,7 +27,7 @@ export interface Transaction {
   title: string;
   narration: string;
   account: string;
-  type: 'Income' | 'Expense' | 'Transfer';
+  type: TransactionType;
   category: string;
   amount: number;
   status: 'CLEARED' | 'PENDING';
@@ -67,7 +73,8 @@ export interface FinancialMetric {
   source: string;
   filters: Record<string, any>;
   formula: string;
-  status: 'RECONCILED' | 'ESTIMATED';
+  status: 'RECONCILED' | 'ESTIMATED' | 'NOT_CONFIGURED' | 'NO_DATA';
+  displayLabel?: string;
 }
 
 export interface FinancialSeries {
@@ -89,9 +96,8 @@ export interface DateBounds {
   endDate: string;
 }
 
-// Gate 8: Hexagonal Repository Port Interfaces
 export interface TransactionQuery {
-  type?: 'Expense' | 'Income' | 'Transfer' | 'All';
+  type?: TransactionType | 'All';
   dateRange?: string;
   search?: string;
   customStart?: string | null;
@@ -129,4 +135,5 @@ export interface FinancialRepositoryPort {
   assets: AssetRepository;
   liabilities: LiabilityRepository;
   snapshots: SnapshotRepository;
+  clearLocalData(): Promise<void> | void;
 }

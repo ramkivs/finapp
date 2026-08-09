@@ -16,19 +16,18 @@ export class MemoryTransactionRepository implements TransactionRepository {
 
   async append(transaction: Transaction): Promise<void> {
     const store = useCanonicalLedger.getState();
-    if (transaction.type === 'Income') {
+    if (transaction.type === 'INCOME') {
       store.addIncome(transaction.title, transaction.amount, transaction.account, transaction.category, transaction.notes);
-    } else if (transaction.type === 'Expense') {
+    } else if (transaction.type === 'EXPENSE') {
       store.addExpense(transaction.title, transaction.amount, transaction.account, transaction.category, transaction.notes);
-    } else if (transaction.type === 'Transfer') {
+    } else if (transaction.type === 'TRANSFER') {
       store.addTransfer(transaction.account, transaction.title, transaction.amount);
     }
   }
 
   async appendMany(transactions: Transaction[]): Promise<void> {
-    for (const tx of transactions) {
-      await this.append(tx);
-    }
+    const store = useCanonicalLedger.getState();
+    store.appendTransactionsDirect(transactions);
   }
 }
 
@@ -79,4 +78,8 @@ export class MemoryRepository implements FinancialRepositoryPort {
   public assets = new MemoryAssetRepository();
   public liabilities = new MemoryLiabilityRepository();
   public snapshots = new MemorySnapshotRepository();
+
+  clearLocalData(): void {
+    useCanonicalLedger.getState().clearLocalData();
+  }
 }

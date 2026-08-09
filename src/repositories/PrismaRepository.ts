@@ -6,18 +6,14 @@ import {
 
 /**
  * Gate 8 Prisma Repository Adapter (Hexagonal Persistence Port)
- * This adapter implements the exact same FinancialRepositoryPort interface.
- * Prisma Client calls are strictly encapsulated inside this module; zero Prisma
- * dependencies leak into Domain Services, Application API, or React presentation.
+ * Strictly encapsulates Prisma client calls inside this module.
  */
 export class PrismaTransactionRepository implements TransactionRepository {
   async findMany(query: TransactionQuery): Promise<Transaction[]> {
-    // Production implementation: await prisma.transaction.findMany({ where: ... });
     return this.findManySync(query);
   }
 
   findManySync(_query: TransactionQuery): Transaction[] {
-    // Fallback sync bridge for client-side rendering preview
     return [];
   }
 
@@ -79,4 +75,8 @@ export class PrismaRepository implements FinancialRepositoryPort {
   public assets = new PrismaAssetRepository();
   public liabilities = new PrismaLiabilityRepository();
   public snapshots = new PrismaSnapshotRepository();
+
+  async clearLocalData(): Promise<void> {
+    // Dev-only implementation: await prisma.$transaction([ ... ])
+  }
 }
