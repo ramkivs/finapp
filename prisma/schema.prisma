@@ -1,0 +1,110 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  DIVIDEND
+  INTEREST
+  REFUND
+  FEE
+  ADJUSTMENT
+}
+
+enum DirectionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  CLEARED
+  PENDING
+}
+
+model ImportBatch {
+  id             String        @id @default(uuid())
+  provider       String
+  sourceFile     String
+  importedAt     DateTime      @default(now()) @db.Timestamptz
+  status         String        @default("COMPLETED")
+  rowCount       Int           @default(0)
+  appendedCount  Int           @default(0)
+  duplicateCount Int           @default(0)
+  transactions   Transaction[]
+
+  @@index([provider, importedAt])
+}
+
+model Transfer {
+  id                 String        @id @default(uuid())
+  sourceAccount      String
+  destinationAccount String
+  createdAt          DateTime      @default(now()) @db.Timestamptz
+  transactions       Transaction[] // Exactly 2 legs (1 DEBIT, 1 CREDIT) atomic repository invariant!
+
+  @@index([sourceAccount, destinationAccount])
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  account         String
+  date            DateTime          @db.Date // Authoritative YYYY-MM-DD Date
+  amount          Decimal           @db.Decimal(19, 2)
+  type            TransactionType
+  direction       DirectionType     // P0 Gate 10 Mandatory Directional Contract (DEBIT vs CREDIT)
+  category        String
+  title           String
+  narration       String
+  notes           String?
+  status          TransactionStatus @default(CLEARED)
+  transferId      String?
+  transfer        Transfer?         @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  fingerprint     String            @unique // Engine-level duplicate exclusion
+  importBatchId   String?
+  importBatch     ImportBatch?      @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  sourceProvider  String?
+  sourceFile      String?
+  sourceRowNumber Int?
+  createdAt       DateTime          @default(now()) @db.Timestamptz
+  updatedAt       DateTime          @updatedAt @db.Timestamptz
+
+  @@index([date, type, status])
+  @@index([category, status, date])
+  @@index([account, date])
+  @@index([transferId, direction])
+}
+
+model Asset {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  amount    Decimal  @db.Decimal(19, 2)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+model Liability {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  amount    Decimal  @db.Decimal(19, 2)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+model NetWorthSnapshot {
+  id               String   @id @default(uuid())
+  asOfDate         DateTime @db.Date // Authoritative YYYY-MM-DD Date
+  totalAssets      Decimal  @db.Decimal(19, 2)
+  totalLiabilities Decimal  @db.Decimal(19, 2)
+  netWorth         Decimal  @db.Decimal(19, 2) // Immutable observation
+  status           String   @default("Anchored Permanent")
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  @@index([asOfDate])
+}
