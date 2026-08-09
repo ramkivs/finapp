@@ -4,14 +4,14 @@ import { FinancialMetric, FinancialSeries, Transaction, NetWorthSnapshot, Transa
 
 export class FinancialQueries {
   static getMetric(metricName: string): FinancialMetric {
-    const transactions = repository.transactions.findManySync({});
+    const transactions = repository.transactions.findManySync({ type: 'All', dateRange: '12M' });
     const assets = repository.assets.findAllSync();
     const liabilities = repository.liabilities.findAllSync();
     return FinancialMetricService.getMetric(metricName, transactions, assets, liabilities);
   }
 
   static getSeries(seriesName: string): FinancialSeries | null {
-    const transactions = repository.transactions.findManySync({});
+    const transactions = repository.transactions.findManySync({ type: 'All', dateRange: '12M' });
     return FinancialMetricService.getSeries(seriesName, transactions);
   }
 
