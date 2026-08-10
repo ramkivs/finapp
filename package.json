@@ -1,7 +1,7 @@
 {
   "name": "finboom-app",
   "private": true,
-  "version": "2.11.2",
+  "version": "2.11.3",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
