@@ -1,3 +1,4 @@
+import { IndexedDBStorageService } from '../src/services/IndexedDBStorageService';
 import { repository } from '../src/repositories';
 import { FinancialCommands as commands } from '../src/application/commands';
 import { FinancialQueries as queries } from '../src/application/queries';
@@ -18,7 +19,7 @@ function assert(condition: boolean, desc: string, testId: string) {
 
 async function runRegressionSuite() {
   console.log('──────────────────────────────────────────────────────────────────────────');
-  console.log('FINBOOM v2.11.2 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-19)');
+  console.log('FINBOOM v2.11.2 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-26)');
   console.log('──────────────────────────────────────────────────────────────────────────\n');
 
   console.log('1. [Local Runtime Empty Default & Demo Dataset Initialization]');
@@ -62,9 +63,9 @@ async function runRegressionSuite() {
 
   // Reload simulation
   await repository.initialize();
-  const reloadedTxs = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const reloadedTxs08 = queries.queryTransactions({ type: 'All', dateRange: '12M' });
   assert(
-    reloadedTxs.length === 0,
+    reloadedTxs08.length === 0,
     'Empty state persists across runtime reload (hasLoadedOnce === true prevents demo reseed)',
     'TEST-08'
   );
@@ -185,6 +186,101 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     netWorthMetric.status === 'RECONCILED' && typeof netWorthMetric.value === 'number' && netWorthMetric.value === 1300000,
     `Existing financial metrics remain unchanged for the same ledger (NET_WORTH: ₹${netWorthMetric.value.toLocaleString()})`,
     'TEST-18'
+  );
+
+  console.log('\n6. [WP-14: Canonical Runtime Boundary & Persistence Unification (TEST-20 to TEST-26)]');
+
+  await repository.clearLocalData();
+  commands.recordIncome('WP14 Test Inc', 777, 'HDFC Bank', 'TEST');
+  const storeTx = useCanonicalLedger.getState().transactions[0];
+  const repoTx = repository.transactions.findAllSync()[0];
+  assert(
+    storeTx?.title === 'WP14 Test Inc' && repoTx?.title === 'WP14 Test Inc' && storeTx.amount === 777,
+    'Command/Canonical Consistency: Mutation via FinancialCommands immediately updates repository & canonical store',
+    'TEST-20'
+  );
+
+  const queryTxs = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const storeTxs = useCanonicalLedger.getState().transactions;
+  assert(
+    queryTxs.length === storeTxs.length && queryTxs[0]?.id === storeTxs[0]?.id,
+    `Query/Canonical Consistency: FinancialQueries reads exact same data visible to canonical runtime (${queryTxs.length} txs)`,
+    'TEST-21'
+  );
+
+  await repository.initialize();
+  const reloadedTxs22 = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  assert(
+    reloadedTxs22.length === 1 && reloadedTxs22[0]?.title === 'WP14 Test Inc',
+    `Reload Consistency: Persistent canonical runtime state identical after reload (${reloadedTxs22[0]?.title})`,
+    'TEST-22'
+  );
+
+  const legacyRes = useCanonicalLedger.getState().commitImportedRows();
+  assert(
+    legacyRes.appended === 0 && queries.queryTransactions({ type: 'All', dateRange: '12M' }).length === 1,
+    'No Legacy Import Generator: Calling commitImportedRows without parsed rows generates 0 synthetic 24-row fallback data',
+    'TEST-23'
+  );
+
+  await commands.clearLocalDevelopmentData();
+  const afterClearRepo = repository.transactions.findAllSync().length;
+  const afterClearStore = useCanonicalLedger.getState().transactions.length;
+  const afterClearIDB = (await IndexedDBStorageService.loadAll()).transactions.length;
+  assert(
+    afterClearRepo === 0 && afterClearStore === 0 && afterClearIDB === 0,
+    'Clear Boundary Consistency: Repository, canonical state, and IndexedDB all agree (0 records)',
+    'TEST-24'
+  );
+
+  IndexedDBStorageService.simulateFailureOnce = true;
+  let errorCaught = false;
+  try {
+    await repository.transactions.append({
+      id: 'tx-fail-test',
+      date: '2026-08-09',
+      dateStr: '09 Aug 2026',
+      title: 'Should Not Persist',
+      narration: 'TEST/FAIL',
+      account: 'HDFC Bank',
+      type: 'Income',
+      category: 'TEST',
+      amount: 9999,
+      status: 'CLEARED'
+    });
+  } catch (e: any) {
+    if (e?.message?.includes('Simulated IndexedDB persistence failure')) {
+      errorCaught = true;
+    }
+  }
+  const failTestRepo = repository.transactions.findAllSync().length;
+  const failTestStore = useCanonicalLedger.getState().transactions.length;
+  assert(
+    errorCaught && failTestRepo === 0 && failTestStore === 0,
+    'Persistence Failure Handling: Persistence failure throws explicitly and does not silently mutate in-memory/UI state',
+    'TEST-25'
+  );
+
+  await repository.clearLocalData();
+  await Promise.all([
+    repository.transactions.append({
+      id: 'tx-rapid-1', date: '2026-08-09', dateStr: '09 Aug 2026', title: 'Rapid 1', narration: 'R1', account: 'HDFC', type: 'Income', category: 'TEST', amount: 10, status: 'CLEARED'
+    }),
+    repository.transactions.append({
+      id: 'tx-rapid-2', date: '2026-08-09', dateStr: '09 Aug 2026', title: 'Rapid 2', narration: 'R2', account: 'HDFC', type: 'Income', category: 'TEST', amount: 20, status: 'CLEARED'
+    }),
+    repository.transactions.append({
+      id: 'tx-rapid-3', date: '2026-08-09', dateStr: '09 Aug 2026', title: 'Rapid 3', narration: 'R3', account: 'HDFC', type: 'Expense', category: 'TEST', amount: 30, status: 'CLEARED'
+    }),
+    repository.transactions.append({
+      id: 'tx-rapid-4', date: '2026-08-09', dateStr: '09 Aug 2026', title: 'Rapid 4', narration: 'R4', account: 'HDFC', type: 'Expense', category: 'TEST', amount: 40, status: 'CLEARED'
+    })
+  ]);
+  const rapidCount = repository.transactions.findAllSync().length;
+  assert(
+    rapidCount === 4,
+    `Sequential Mutation Integrity: All 4 rapid concurrent mutations executed sequentially without lost updates (${rapidCount}/4 records)`,
+    'TEST-26'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');

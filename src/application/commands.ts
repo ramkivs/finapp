@@ -1,7 +1,8 @@
 import { repository } from '../repositories';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { ImportPipelineService } from '../services/ImportPipelineService';
-import { Transaction } from '../domain/types';
+import { Transaction, APP_AS_OF_DATE } from '../domain/types';
+import { formatDisplayDate } from '../services/DateRangeService';
 
 const SAMPLE_DEFAULT_CSV = `Date,Title,Narration,Amount,Type,Account
 2026-08-06,ITC Limited,ACH/C-/ITC LTD DIVIDEND/NSE0098,2100,INCOME,HDFC Bank
@@ -12,9 +13,9 @@ const SAMPLE_DEFAULT_CSV = `Date,Title,Narration,Amount,Type,Account
 export class FinancialCommands {
   static recordIncome(title: string, amount: number, account: string, category: string, notes?: string): void {
     repository.transactions.append({
-      id: 'tx-cmd-' + Date.now(),
-      date: '2026-08-09',
-      dateStr: '09 Aug 2026',
+      id: 'tx-inc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      date: APP_AS_OF_DATE,
+      dateStr: formatDisplayDate(APP_AS_OF_DATE),
       title,
       narration: 'MANUAL/' + title.toUpperCase(),
       account,
@@ -28,9 +29,9 @@ export class FinancialCommands {
 
   static recordExpense(title: string, amount: number, account: string, category: string, notes?: string): void {
     repository.transactions.append({
-      id: 'tx-cmd-' + Date.now(),
-      date: '2026-08-09',
-      dateStr: '09 Aug 2026',
+      id: 'tx-exp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      date: APP_AS_OF_DATE,
+      dateStr: formatDisplayDate(APP_AS_OF_DATE),
       title,
       narration: 'MANUAL/' + title.toUpperCase(),
       account,
@@ -38,23 +39,41 @@ export class FinancialCommands {
       category,
       amount,
       status: 'CLEARED',
-      notes
+      notes: notes || 'Manual expense entry'
     });
   }
 
   static recordTransfer(source: string, destination: string, amount: number): void {
-    repository.transactions.append({
-      id: 'tr-cmd-' + Date.now(),
-      date: '2026-08-09',
-      dateStr: '09 Aug 2026',
+    const trId = 'tr-cmd-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const debitTx: Transaction = {
+      id: trId + '-debit',
+      transferId: trId,
+      date: APP_AS_OF_DATE,
+      dateStr: formatDisplayDate(APP_AS_OF_DATE),
       title: 'Transfer to ' + destination,
-      narration: 'TRANSFER/' + source + '-' + destination,
+      narration: 'TRANSFER-DEBIT/' + trId,
       account: source,
       type: 'Transfer',
       category: 'TRANSFER',
       amount,
-      status: 'CLEARED'
-    });
+      status: 'CLEARED',
+      notes: 'Bank-to-Bank Transfer (Debit)'
+    };
+    const creditTx: Transaction = {
+      id: trId + '-credit',
+      transferId: trId,
+      date: APP_AS_OF_DATE,
+      dateStr: formatDisplayDate(APP_AS_OF_DATE),
+      title: 'Transfer from ' + source,
+      narration: 'TRANSFER-CREDIT/' + trId,
+      account: destination,
+      type: 'Transfer',
+      category: 'TRANSFER',
+      amount,
+      status: 'CLEARED',
+      notes: 'Bank-to-Bank Transfer (Credit)'
+    };
+    repository.transactions.appendMany([debitTx, creditTx]);
   }
 
   static recordAsset(name: string, amount: number): void {
@@ -66,14 +85,7 @@ export class FinancialCommands {
   }
 
   static createSnapshot(): void {
-    repository.snapshots.create({
-      id: 'snap-cmd-' + Date.now(),
-      dateStr: '09 Aug 2026 (Today)',
-      totalAssets: 0,
-      totalLiabilities: 0,
-      netWorth: 0,
-      status: 'Anchored Permanent'
-    });
+    repository.snapshots.create();
   }
 
   static importStatement(
