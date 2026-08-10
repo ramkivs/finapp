@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare, Trash2 } from 'lucide-react';
-import { commands } from '../application';
+import React from 'react';
+import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare, Database, Trash2 } from 'lucide-react';
+import { FinancialCommands } from '../application/commands';
 
 interface Props {
   activeTab: string;
@@ -8,8 +8,6 @@ interface Props {
 }
 
 export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
-  const [showClearModal, setShowClearModal] = useState(false);
-
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'wealth', label: 'Wealth', icon: TrendingUp },
@@ -22,10 +20,16 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
     { id: 'calculators', label: 'Calculators', icon: Calculator },
   ];
 
-  const handleClearData = () => {
-    commands.clearLocalDevelopmentData();
-    setShowClearModal(false);
-    alert('Local development financial data cleared. All views now report empty canonical state.');
+  const handleLoadDemo = async () => {
+    await FinancialCommands.loadDemoData();
+    alert('Demo dataset loaded successfully into canonical runtime and IndexedDB storage!');
+  };
+
+  const handleClearData = async () => {
+    if (window.confirm('Are you sure you want to clear all local financial data? This will clear transactions, assets, liabilities, snapshots, and import metadata.')) {
+      await FinancialCommands.clearLocalDevelopmentData();
+      alert('All local financial data cleared! Empty state persisted across browser reload.');
+    }
   };
 
   return (
@@ -78,7 +82,23 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
         })}
 
         <button
-          onClick={() => alert('What\'s New (v2.11.2): Fix/runtime-integrity branch active. Repository boundary enforced.')}
+          onClick={handleLoadDemo}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition mb-1"
+        >
+          <Database size={19} />
+          <span>Load Demo Data</span>
+        </button>
+
+        <button
+          onClick={handleClearData}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition mb-1"
+        >
+          <Trash2 size={19} />
+          <span>Clear Dev Data</span>
+        </button>
+
+        <button
+          onClick={() => alert('What\'s New (v2.1.7): React 18 Production Build with 100% Zero-Literal Temporal Authority.')}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition mb-1"
         >
           <Sparkles size={19} />
@@ -92,14 +112,6 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
           <Settings size={19} />
           <span>Settings</span>
         </button>
-
-        <button
-          onClick={() => setShowClearModal(true)}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition mb-1"
-        >
-          <Trash2 size={19} />
-          <span>Clear Dev Data</span>
-        </button>
       </nav>
 
       <div className="p-3 border-t border-gray-200 dark:border-gray-800">
@@ -111,31 +123,6 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
           <span>Feedback</span>
         </button>
       </div>
-
-      {showClearModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <h4 className="font-bold text-lg text-gray-900 dark:text-white mb-2">Clear Local Dev Data?</h4>
-            <p className="text-xs text-gray-500 mb-6">
-              Are you sure you want to clear all local development financial data (Transactions, Assets, Liabilities, Snapshots)? This action cannot be undone and immediately reports empty canonical state.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowClearModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleClearData}
-                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-bold text-xs shadow-sm"
-              >
-                Yes, Clear All Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   );
 };

@@ -1,88 +1,195 @@
 import { Transaction } from '../domain/types';
-import { queries } from '../application';
+import { Sha256Service } from './Sha256Service';
 
-export interface ImportReviewResult {
+export interface CSVImportResult {
+  batchId: string;
   totalDetected: number;
   validRows: Transaction[];
   duplicateCount: number;
   ambiguousCount: number;
-  batchId: string;
+  invalidCount: number;
 }
 
 export class ImportPipelineService {
-  static processCSV(csvText: string, provider: string, fileName: string): ImportReviewResult {
-    const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+  /**
+   * Generates a genuine SHA-256 hexadecimal digest (64 hex characters)
+   * of the canonical transaction string `${account}|${date}|${amount}|${narration}`.
+   */
+  static generateFingerprint(tx: { account: string; date: string; amount: number; narration: string }): string {
+    const canonicalString = `${tx.account}|${tx.date}|${tx.amount}|${tx.narration.toLowerCase().trim()}`;
+    return Sha256Service.hash(canonicalString);
+  }
+
+  /**
+   * Enforces security sanitization against spreadsheet formula injections.
+   * Legitimate negative financial numbers (e.g. -1250, -50000, -235.50) are preserved verbatim.
+   */
+  static sanitizeCell(val: string): string {
+    if (!val) return '';
+    let s = val.trim();
+    // Legitimate signed financial numbers (-1250, -50000, -235.50, +500) are NEVER hostile formulas
+    if (/^[-+]\s*\d+(\.\d+)?$/.test(s)) {
+      return s;
+    }
+    // Check for hostile spreadsheet formulas (=HYPERLINK(...), =IMPORTXML(...), =cmd|... or leading =, @, +, -)
+    if (/^[=@+\-]/.test(s) || /=(HYPERLINK|IMPORTXML|cmd\|)/i.test(s)) {
+      s = s.replace(/^[=@+\-]+/, '').trim();
+      if (/^(HYPERLINK|IMPORTXML|cmd\|)/i.test(s)) {
+        s = s.replace(/^(HYPERLINK|IMPORTXML|cmd\|)\s*\(?/i, '[Sanitized-Formula] ');
+      } else {
+        s = '[Sanitized-Formula] ' + s;
+      }
+    }
+    return s;
+  }
+
+  static isHostileFormula(val: string): boolean {
+    if (!val) return false;
+    const s = val.trim();
+    if (/^[-+]\s*\d+(\.\d+)?$/.test(s)) {
+      return false;
+    }
+    return /^[=@]/.test(s) || /^[-+]\s*[^0-9\s]/.test(s) || /=(HYPERLINK|IMPORTXML|cmd\|)/i.test(s);
+  }
+
+  static parseCSVText(csvText: string): Array<Record<string, string>> {
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length < 2) return [];
+
+    // Smart CSV parser handling quotes and formula parentheses
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      let inParens = 0;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+          current += char;
+        } else if (char === '(' && !inQuotes) {
+          inParens++;
+          current += char;
+        } else if (char === ')' && !inQuotes) {
+          if (inParens > 0) inParens--;
+          current += char;
+        } else if (char === ',' && !inQuotes && inParens === 0) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+
+    const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/["']/g, ''));
+    const rows: Array<Record<string, string>> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseLine(lines[i]).map(v => v.replace(/^["']|["']$/g, ''));
+      if (values.length < headers.length) continue;
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        row[h] = values[idx] || '';
+      });
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  static processCSV(
+    csvText: string,
+    existingTransactions: Transaction[],
+    provider: string = 'CSV Import',
+    fileName: string = 'upload.csv'
+  ): CSVImportResult {
     const batchId = 'batch-' + Date.now();
+    const rows = this.parseCSVText(csvText);
     const validRows: Transaction[] = [];
     let duplicateCount = 0;
+    let invalidCount = 0;
     let ambiguousCount = 0;
 
-    const existingTxs = queries.queryTransactions({ type: 'All', dateRange: '12M' });
     const existingFingerprints = new Set(
-      existingTxs.map(t => `${t.account}|${t.date}|${t.amount}|${t.narration.toLowerCase().trim()}`)
+      existingTransactions.map(tx => this.generateFingerprint({
+        account: tx.account,
+        date: tx.date,
+        amount: tx.amount,
+        narration: tx.narration
+      }))
     );
 
-    const startIndex = lines[0].toLowerCase().includes('date') ? 1 : 0;
+    const seenInBatch = new Set<string>();
 
-    for (let i = startIndex; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-      if (cols.length < 4) continue;
+    rows.forEach((row, index) => {
+      const dateVal = row['date'] || row['tx_date'] || row['transaction date'] || '';
+      const titleVal = this.sanitizeCell(row['title'] || row['description'] || row['name'] || row['payee'] || 'Imported Transaction');
+      const narrationVal = this.sanitizeCell(row['narration'] || row['memo'] || row['details'] || titleVal);
+      const amountRaw = row['amount'] || row['val'] || row['value'] || '0';
+      const typeValRaw = (row['type'] || row['tx_type'] || 'INCOME').toUpperCase();
+      const accountVal = this.sanitizeCell(row['account'] || row['bank'] || provider);
 
-      // Hostile formula injection defense
-      if (cols[1]?.startsWith('=') || cols[2]?.startsWith('=')) {
-        continue;
+      // Validate date (YYYY-MM-DD format check)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+        invalidCount++;
+        return;
       }
 
-      const date = cols[0] || '2026-08-01';
-      const title = cols[1] || `Imported Entry ${i}`;
-      const narration = cols[2] || `STMT/ROW-${i}`;
-      const amountRaw = parseFloat(cols[3]) || 1000;
-      const typeStr = (cols[4] || 'INCOME').toUpperCase();
-      const account = cols[5] || 'HDFC Bank';
-
-      const type: 'INCOME' | 'EXPENSE' | 'TRANSFER' =
-        typeStr === 'EXPENSE' ? 'EXPENSE' : typeStr === 'TRANSFER' ? 'TRANSFER' : 'INCOME';
-
-      if (typeStr !== 'INCOME' && typeStr !== 'EXPENSE' && typeStr !== 'TRANSFER') {
-        ambiguousCount++;
+      // Allow negative or positive amounts (strip sign for absolute amount if needed, or parse directly)
+      const parsedNumeric = parseFloat(amountRaw);
+      if (isNaN(parsedNumeric) || parsedNumeric === 0) {
+        invalidCount++;
+        return;
       }
 
-      const tx: Transaction = {
-        id: `tx-import-${batchId}-${i}`,
-        date,
-        dateStr: date,
-        title,
-        narration,
-        account,
+      const amount = Math.abs(parsedNumeric);
+
+      let type: 'Income' | 'Expense' | 'Transfer' = 'Income';
+      if (typeValRaw.includes('EXPENSE') || typeValRaw.includes('DEBIT') || parsedNumeric < 0) {
+        type = 'Expense';
+      } else if (typeValRaw.includes('TRANSFER')) {
+        type = 'Transfer';
+      }
+
+      const candidate: Transaction = {
+        id: `tx-import-${batchId}-${index + 1}`,
+        date: dateVal,
+        dateStr: dateVal,
+        title: titleVal,
+        narration: narrationVal,
+        account: accountVal,
         type,
-        category: type === 'INCOME' ? 'DIVIDEND' : 'DINING',
-        amount: Math.abs(amountRaw),
+        category: row['category'] || 'GENERAL',
+        amount,
         status: 'CLEARED',
-        notes: `Imported from ${fileName} (Row ${i})`,
+        notes: `Imported from ${fileName}`,
         importBatchId: batchId,
         sourceProvider: provider,
         sourceFile: fileName,
-        sourceRowNumber: i
+        sourceRowNumber: index + 1
       };
 
-      const fp = `${tx.account}|${tx.date}|${tx.amount}|${tx.narration.toLowerCase().trim()}`;
-      tx.fingerprint = fp;
+      const fp = this.generateFingerprint(candidate);
+      candidate.fingerprint = fp;
 
-      if (existingFingerprints.has(fp)) {
+      if (existingFingerprints.has(fp) || seenInBatch.has(fp)) {
         duplicateCount++;
-        continue;
+        return;
       }
 
+      seenInBatch.add(fp);
       existingFingerprints.add(fp);
-      validRows.push(tx);
-    }
+      validRows.push(candidate);
+    });
 
     return {
-      totalDetected: lines.length - startIndex,
+      batchId,
+      totalDetected: rows.length,
       validRows,
       duplicateCount,
       ambiguousCount,
-      batchId
+      invalidCount
     };
   }
 }

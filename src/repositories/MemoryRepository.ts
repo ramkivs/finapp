@@ -14,20 +14,29 @@ export class MemoryTransactionRepository implements TransactionRepository {
     return useCanonicalLedger.getState().getFilteredTransactions(query);
   }
 
+  async findAll(): Promise<Transaction[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Transaction[] {
+    return useCanonicalLedger.getState().transactions;
+  }
+
   async append(transaction: Transaction): Promise<void> {
     const store = useCanonicalLedger.getState();
-    if (transaction.type === 'INCOME') {
+    if (transaction.type === 'Income') {
       store.addIncome(transaction.title, transaction.amount, transaction.account, transaction.category, transaction.notes);
-    } else if (transaction.type === 'EXPENSE') {
+    } else if (transaction.type === 'Expense') {
       store.addExpense(transaction.title, transaction.amount, transaction.account, transaction.category, transaction.notes);
-    } else if (transaction.type === 'TRANSFER') {
+    } else if (transaction.type === 'Transfer') {
       store.addTransfer(transaction.account, transaction.title, transaction.amount);
     }
   }
 
   async appendMany(transactions: Transaction[]): Promise<void> {
-    const store = useCanonicalLedger.getState();
-    store.appendTransactionsDirect(transactions);
+    for (const tx of transactions) {
+      await this.append(tx);
+    }
   }
 }
 
@@ -79,7 +88,15 @@ export class MemoryRepository implements FinancialRepositoryPort {
   public liabilities = new MemoryLiabilityRepository();
   public snapshots = new MemorySnapshotRepository();
 
-  clearLocalData(): void {
-    useCanonicalLedger.getState().clearLocalData();
+  async clearLocalData(): Promise<void> {
+    await useCanonicalLedger.getState().clearLocalData();
+  }
+
+  async loadDemoData(): Promise<void> {
+    await useCanonicalLedger.getState().loadDemoData();
+  }
+
+  async initialize(): Promise<void> {
+    await useCanonicalLedger.getState().initialize();
   }
 }

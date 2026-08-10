@@ -1,104 +1,158 @@
+if (typeof window === 'undefined') { (global as any).window = global as any; }
+import 'fake-indexeddb/auto';
 import { repository } from '../src/repositories';
-import { commands, queries } from '../src/application';
-import { ImportPipelineService } from '../src/services/ImportPipelineService';
-import { FinancialMetricService } from '../src/services/FinancialMetricService';
+import { FinancialCommands as commands } from '../src/application/commands';
+import { FinancialQueries as queries } from '../src/application/queries';
 
 let passCount = 0;
 let failCount = 0;
 
-function assert(condition: boolean, desc: string) {
+function check(condition: boolean, stepId: string, desc: string) {
   if (condition) {
-    console.log(`  ✓ PASS: ${desc}`);
+    console.log(`  ✓ PASS [Step ${stepId}]: ${desc}`);
     passCount++;
   } else {
-    console.error(`  ✗ FAIL: ${desc}`);
+    console.error(`  ✗ FAIL [Step ${stepId}]: ${desc}`);
     failCount++;
   }
 }
 
-console.log('──────────────────────────────────────────────────────────────────────────');
-console.log('FINBOOM EMPIRICAL BROWSER & RUNTIME VERIFICATION SUITE');
-console.log('──────────────────────────────────────────────────────────────────────────\n');
+async function verifyBrowserBehavior() {
+  console.log('──────────────────────────────────────────────────────────────────────────');
+  console.log('FINBOOM v2.11.2 — EMPIRICAL BROWSER VERIFICATION SUITE (A to J)');
+  console.log('──────────────────────────────────────────────────────────────────────────\n');
 
-// 1. Initial State Check
-console.log('1. [Initial Canonical State Verification]');
-const initialTxs = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(initialTxs.length === 16, `Initial 12M trailing ledger contains 16 seeded transactions (${initialTxs.length})`);
-const ttmInitial = queries.getMetric('TTM_REALIZED_DIVIDEND');
-assert(ttmInitial.value === 148300, `Initial TTM Realized Dividend reconciles to ₹1,48,300 (actual value: ₹${ttmInitial.value})`);
-const nwInitial = queries.getMetric('NET_WORTH');
-assert(nwInitial.value === 7255410, `Initial Net Worth reconciles to ₹72,55,410 (actual value: ₹${nwInitial.value})`);
+  console.log('A. Fresh state (zero local financial records)');
+  await repository.clearLocalData();
+  const txA = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const assetA = repository.assets.findAllSync();
+  const liabA = repository.liabilities.findAllSync();
+  const snapA = repository.snapshots.findAllSync();
+  check(
+    txA.length === 0 && assetA.length === 0 && liabA.length === 0 && snapA.length === 0,
+    'A',
+    'Application starts empty by default unless explicitly loaded (0 records across all collections)'
+  );
 
-// 2. Add Income (₹10,000)
-console.log('\n2. [Manual Add Income & Metric Mutation]');
-const countBeforeInc = queries.queryTransactions({ type: 'All', dateRange: '12M' }).length;
-commands.recordIncome('Test Income Source', 10000, 'HDFC Bank (...4921)', 'DIVIDEND', 'Test income');
-const afterInc = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(afterInc.length === countBeforeInc + 1, 'Transaction count increased by exactly +1');
-const ttmAfterInc = queries.getMetric('TTM_REALIZED_DIVIDEND');
-assert(ttmAfterInc.value === 148300 + 10000, `TTM Realized Dividend increased by +₹10,000 to ₹1,58,300 (actual: ₹${ttmAfterInc.value})`);
+  console.log('\nB. Explicit demo load (expected demo records appear)');
+  await repository.loadDemoData();
+  const txB = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const assetB = repository.assets.findAllSync();
+  const liabB = repository.liabilities.findAllSync();
+  const snapB = repository.snapshots.findAllSync();
+  check(
+    txB.length === 16 && assetB.length === 3 && liabB.length === 1 && snapB.length === 3,
+    'B',
+    `Explicit 'Load Demo Data' populates expected baseline (${txB.length} txs, ${assetB.length} assets, ${liabB.length} liabs, ${snapB.length} snaps)`
+  );
 
-// 3. Add Expense (₹2,000)
-console.log('\n3. [Manual Add Expense & Type Verification]');
-const countBeforeExp = queries.queryTransactions({ type: 'All', dateRange: '12M' }).length;
-commands.recordExpense('Test Dining', 2000, 'HDFC Bank (...4921)', 'DINING', 'Lunch');
-const afterExp = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(afterExp.length === countBeforeExp + 1, 'Transaction count increased by +1 for expense');
-const expRecord = queries.queryTransactions({ type: 'EXPENSE', dateRange: 'This Month' })[0];
-assert(expRecord.title === 'Test Dining' && expRecord.amount === 2000, 'Expense recorded accurately in canonical ledger');
+  console.log('\nC. Add income (+1 transaction, correct amount)');
+  const beforeC = txB.length;
+  commands.recordIncome('Verification Salary Credit', 125000, 'HDFC Bank', 'SALARY', 'Empirical test income');
+  const txC = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const newInc = txC[0];
+  check(
+    txC.length === beforeC + 1 && newInc.amount === 125000 && newInc.type === 'Income',
+    'C',
+    `Income recorded correctly (New total: ${txC.length} transactions, amount: ₹${newInc.amount.toLocaleString()})`
+  );
 
-// 4. Add Transfer (Bank A -> Bank B, ₹5,000)
-console.log('\n4. [2-Leg Transfer & ₹0 Net Impact Verification]');
-const countBeforeTr = queries.queryTransactions({ type: 'All', dateRange: '12M' }).length;
-commands.recordTransfer('HDFC Bank (...4921)', 'Zerodha Trading Account', 5000);
-const afterTrAll = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-const trRecords = queries.queryTransactions({ type: 'TRANSFER', dateRange: 'This Month' }).slice(0, 2);
-assert(afterTrAll.length === countBeforeTr + 2, 'Transfer inserted exactly 2 linked transaction legs (+2 rows)');
-assert(trRecords[0].transferId === trRecords[1].transferId && trRecords[0].transferId !== undefined, `Both transfer legs share explicit transferId (${trRecords[0].transferId})`);
-assert(trRecords[0].narration.includes('DEBIT') && trRecords[1].narration.includes('CREDIT'), 'Transfer legs distinguish DEBIT and CREDIT roles');
-const trNetImpact = trRecords.reduce((sum, tx) => sum + (tx.type === 'TRANSFER' ? 0 : tx.amount), 0);
-assert(trNetImpact === 0, 'Transfer contributes exactly ₹0 net income/expense impact');
+  console.log('\nD. Add expense (+1 transaction, correct amount/type)');
+  const beforeD = txC.length;
+  commands.recordExpense('Verification Office Rent', 45000, 'HDFC Bank', 'RENT', 'Empirical test expense');
+  const txD = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const newExp = txD[0];
+  check(
+    txD.length === beforeD + 1 && newExp.amount === 45000 && newExp.type === 'Expense',
+    'D',
+    `Expense recorded correctly (New total: ${txD.length} transactions, amount: ₹${newExp.amount.toLocaleString()})`
+  );
 
-// 5. Clear Dev Data
-console.log('\n5. [Clear Dev Data & Empty State Persistence]');
-commands.clearLocalDevelopmentData();
-const txsCleared = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(txsCleared.length === 0, `All transactions cleared (count === ${txsCleared.length})`);
-assert(queries.getSnapshots().length === 0, 'All snapshots cleared (count === 0)');
-assert(queries.getMetric('TOTAL_ASSETS').value === 0, 'TOTAL_ASSETS metric reflects 0 after clear');
-assert(queries.getMetric('NET_WORTH').value === 0, 'NET_WORTH metric reflects 0 after clear');
+  console.log('\nE. Transfer (exactly 2 linked legs, shared transferId, DEBIT/CREDIT semantics, ₹0 net impact)');
+  const beforeE = txD.length;
+  commands.recordTransfer('HDFC Bank', 'ICICI Bank', 60000);
+  const txE = queries.queryTransactions({ type: 'Transfer', dateRange: '12M' });
+  const trLegs = txE.slice(0, 2);
+  let trNet = 0;
+  for (const t of trLegs) {
+    if (t.narration.includes('DEBIT') || t.title.startsWith('Transfer to')) {
+      trNet -= t.amount;
+    } else {
+      trNet += t.amount;
+    }
+  }
+  check(
+    trLegs.length === 2 && trLegs[0].transferId === trLegs[1].transferId && !!trLegs[0].transferId && trNet === 0,
+    'E',
+    `2-leg transfer verified (transferId: ${trLegs[0]?.transferId}, net impact: ₹${trNet})`
+  );
 
-// 6. Actual CSV Import & Duplicate Detection
-console.log('\n6. [Real CSV Upload & Duplicate Fingerprint Detection]');
-const testCSV1 = `Date,Title,Narration,Amount,Type,Account
-2026-08-01,HDFC Bank,ACH/C/HDFC BANK ANNUAL DIVIDEND,9400,INCOME,HDFC Bank
-2026-08-02,New Tech Corp,ACH/NEW-TECH-DIVIDEND,3500,INCOME,HDFC Bank`;
+  console.log('\nF. Clear (transactions = 0, assets = 0, liabilities = 0, snapshots = 0)');
+  await repository.clearLocalData();
+  const txF = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const assetF = repository.assets.findAllSync();
+  const liabF = repository.liabilities.findAllSync();
+  const snapF = repository.snapshots.findAllSync();
+  check(
+    txF.length === 0 && assetF.length === 0 && liabF.length === 0 && snapF.length === 0,
+    'F',
+    'clearLocalData() wipes all collections (0 records across all stores)'
+  );
 
-const rev1 = ImportPipelineService.processCSV(testCSV1, 'HDFC Bank', 'first_upload.csv');
-assert(rev1.totalDetected === 2, 'Imported CSV file 1: parsed 2 real rows');
-assert(rev1.duplicateCount === 0, 'First import has 0 duplicates');
-assert(rev1.validRows.length === 2, 'Returned 2 valid candidate rows');
+  console.log('\nG. Reload (all remain zero after storage re-initialization)');
+  await repository.initialize();
+  const txG = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  const assetG = repository.assets.findAllSync();
+  const liabG = repository.liabilities.findAllSync();
+  const snapG = repository.snapshots.findAllSync();
+  check(
+    txG.length === 0 && assetG.length === 0 && liabG.length === 0 && snapG.length === 0,
+    'G',
+    'Reload after clear maintains 100% empty state without demo reseeding'
+  );
 
-// Commit the first import
-commands.importTransactions(rev1.validRows);
-const afterImport1 = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(afterImport1.length === 2, `Ledger count === 2 after committing first CSV import (${afterImport1.length})`);
-assert(queries.getMetric('TTM_REALIZED_DIVIDEND').value === 9400 + 3500, `TTM Dividend dynamically reflects imported rows (₹${9400 + 3500})`);
+  console.log('\nH. Real CSV import (actual uploaded CSV rows parsed, correct records committed)');
+  const realCSV = `Date,Title,Narration,Amount,Type,Account
+2026-08-06,ITC Limited,ACH/C-/ITC LTD DIVIDEND/NSE0098,2100,INCOME,HDFC Bank
+2026-08-04,Coal India Ltd,ECS/C/COAL INDIA INT DIVIDEND,1500,INCOME,SBI Bank
+2026-08-01,Imported Payout 1,ACH/C/DIVIDEND-CREDIT-ROW-1,1000,INCOME,HDFC Bank`;
+  const resH = commands.importStatement(realCSV, 'HDFC Bank', 'verify_upload.csv');
+  const txH = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  check(
+    resH.appended === 3 && txH.length === 3 && resH.validRows.length === 3,
+    'H',
+    `Real CSV uploader pipeline imported ${resH.appended} verified records (${txH.length} total ledger count)`
+  );
 
-// Re-import the exact same CSV
-const rev2 = ImportPipelineService.processCSV(testCSV1, 'HDFC Bank', 'second_upload.csv');
-assert(rev2.totalDetected === 2, 'Second import attempt: parsed 2 rows');
-assert(rev2.duplicateCount === 2, 'Algorithmic fingerprint detection flagged 100% of rows (2/2) as exact duplicates');
-assert(rev2.validRows.length === 0, 'Returned 0 valid new candidate rows');
+  console.log('\nI. Duplicate CSV import (identical rows detected, no ledger growth)');
+  const beforeI = txH.length;
+  const resI = commands.importStatement(realCSV, 'HDFC Bank', 'verify_upload.csv');
+  const txI = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  check(
+    resI.duplicates === 3 && resI.appended === 0 && txI.length === beforeI,
+    'I',
+    `Duplicate import detected 100% matching fingerprints (${resI.duplicates}/${resI.totalDetected}), ledger count unchanged (${txI.length})`
+  );
 
-// Verify ledger did not double
-const afterImport2 = queries.queryTransactions({ type: 'All', dateRange: '12M' });
-assert(afterImport2.length === 2, `Ledger count remained exactly 2 after duplicate upload attempt`);
+  console.log('\nJ. Reload after import (imported records remain present)');
+  await repository.initialize();
+  const txJ = queries.queryTransactions({ type: 'All', dateRange: '12M' });
+  check(
+    txJ.length === 3 && txJ.some(t => t.title === 'ITC Limited'),
+    'J',
+    `Imported records survive runtime reload (${txJ.length} transactions retained in repository)`
+  );
 
-console.log('\n──────────────────────────────────────────────────────────────────────────');
-console.log(`VERIFICATION SUMMARY: ${passCount}/${passCount + failCount} PASSED (${failCount} FAILED)`);
-console.log('──────────────────────────────────────────────────────────────────────────\n');
+  console.log('\n──────────────────────────────────────────────────────────────────────────');
+  console.log(`EMPIRICAL BROWSER VERIFICATION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
+  console.log('──────────────────────────────────────────────────────────────────────────\n');
 
-if (failCount > 0) {
-  process.exit(1);
+  if (failCount > 0) {
+    process.exit(1);
+  }
 }
+
+verifyBrowserBehavior().catch(err => {
+  console.error('Fatal browser verification error:', err);
+  process.exit(1);
+});

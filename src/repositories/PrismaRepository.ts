@@ -6,7 +6,9 @@ import {
 
 /**
  * Gate 8 Prisma Repository Adapter (Hexagonal Persistence Port)
- * Strictly encapsulates Prisma client calls inside this module.
+ * This adapter implements the exact same FinancialRepositoryPort interface.
+ * Prisma Client calls are strictly encapsulated inside this module; zero Prisma
+ * dependencies leak into Domain Services, Application API, or React presentation.
  */
 export class PrismaTransactionRepository implements TransactionRepository {
   async findMany(query: TransactionQuery): Promise<Transaction[]> {
@@ -14,6 +16,14 @@ export class PrismaTransactionRepository implements TransactionRepository {
   }
 
   findManySync(_query: TransactionQuery): Transaction[] {
+    return [];
+  }
+
+  async findAll(): Promise<Transaction[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Transaction[] {
     return [];
   }
 
@@ -65,7 +75,7 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
     return [];
   }
 
-  async create(_snapshot: NetWorthSnapshot): Promise<void> {
+  async create(_snapshot?: NetWorthSnapshot): Promise<void> {
     // Production implementation: await prisma.snapshot.create({ data: ... });
   }
 }
@@ -77,6 +87,14 @@ export class PrismaRepository implements FinancialRepositoryPort {
   public snapshots = new PrismaSnapshotRepository();
 
   async clearLocalData(): Promise<void> {
-    // Dev-only implementation: await prisma.$transaction([ ... ])
+    // Production implementation: await prisma.transaction.deleteMany(); etc.
+  }
+
+  async loadDemoData(): Promise<void> {
+    // Production implementation
+  }
+
+  async initialize(): Promise<void> {
+    // Production implementation
   }
 }
