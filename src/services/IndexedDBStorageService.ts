@@ -20,6 +20,15 @@ export class IndexedDBStorageService {
     hasLoadedOnce: false
   };
 
+  private static mutex: Promise<any> = Promise.resolve();
+  public static simulateFailureOnce: boolean = false;
+
+  static enqueueSave<T>(task: () => Promise<T>): Promise<T> {
+    const resultPromise = this.mutex.then(() => task());
+    this.mutex = resultPromise.then(() => {}).catch(() => {});
+    return resultPromise;
+  }
+
   private static getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined' || !window.indexedDB) {
@@ -41,51 +50,53 @@ export class IndexedDBStorageService {
   }
 
   static async loadAll(): Promise<StoredLedgerState> {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      return Promise.resolve({
-        transactions: [...this.nodeFallbackStore.transactions],
-        assets: [...this.nodeFallbackStore.assets],
-        liabilities: [...this.nodeFallbackStore.liabilities],
-        snapshots: [...this.nodeFallbackStore.snapshots],
-        hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
-      });
-    }
+    return this.enqueueSave(async () => {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        return {
+          transactions: [...this.nodeFallbackStore.transactions],
+          assets: [...this.nodeFallbackStore.assets],
+          liabilities: [...this.nodeFallbackStore.liabilities],
+          snapshots: [...this.nodeFallbackStore.snapshots],
+          hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
+        };
+      }
 
-    try {
-      const db = await this.getDB();
-      const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readonly');
-      const getStore = (name: string) => new Promise<any[]>((resolve) => {
-        const req = tx.objectStore(name).getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([]);
-      });
+      try {
+        const db = await this.getDB();
+        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readonly');
+        const getStore = (name: string) => new Promise<any[]>((resolve) => {
+          const req = tx.objectStore(name).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => resolve([]);
+        });
 
-      const [txs, assets, liabs, snaps, meta] = await Promise.all([
-        getStore('transactions'),
-        getStore('assets'),
-        getStore('liabilities'),
-        getStore('snapshots'),
-        getStore('meta')
-      ]);
+        const [txs, assets, liabs, snaps, meta] = await Promise.all([
+          getStore('transactions'),
+          getStore('assets'),
+          getStore('liabilities'),
+          getStore('snapshots'),
+          getStore('meta')
+        ]);
 
-      const hasLoadedMeta = meta.find(m => m.key === 'hasLoadedOnce');
-      db.close();
-      return {
-        transactions: txs as Transaction[],
-        assets: assets as Asset[],
-        liabilities: liabs as Liability[],
-        snapshots: snaps as NetWorthSnapshot[],
-        hasLoadedOnce: !!hasLoadedMeta?.value
-      };
-    } catch (e) {
-      return {
-        transactions: [...this.nodeFallbackStore.transactions],
-        assets: [...this.nodeFallbackStore.assets],
-        liabilities: [...this.nodeFallbackStore.liabilities],
-        snapshots: [...this.nodeFallbackStore.snapshots],
-        hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
-      };
-    }
+        const hasLoadedMeta = meta.find(m => m.key === 'hasLoadedOnce');
+        db.close();
+        return {
+          transactions: txs as Transaction[],
+          assets: assets as Asset[],
+          liabilities: liabs as Liability[],
+          snapshots: snaps as NetWorthSnapshot[],
+          hasLoadedOnce: !!hasLoadedMeta?.value
+        };
+      } catch (e) {
+        return {
+          transactions: [...this.nodeFallbackStore.transactions],
+          assets: [...this.nodeFallbackStore.assets],
+          liabilities: [...this.nodeFallbackStore.liabilities],
+          snapshots: [...this.nodeFallbackStore.snapshots],
+          hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
+        };
+      }
+    });
   }
 
   static async saveAll(state: {
@@ -94,96 +105,108 @@ export class IndexedDBStorageService {
     liabilities: Liability[];
     snapshots: NetWorthSnapshot[];
   }): Promise<void> {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      this.nodeFallbackStore = {
-        transactions: [...state.transactions],
-        assets: [...state.assets],
-        liabilities: [...state.liabilities],
-        snapshots: [...state.snapshots],
-        hasLoadedOnce: true
-      };
-      return Promise.resolve();
-    }
+    return this.enqueueSave(async () => {
+      if (this.simulateFailureOnce) {
+        this.simulateFailureOnce = false;
+        throw new Error('Simulated IndexedDB persistence failure');
+      }
 
-    try {
-      const db = await this.getDB();
-      const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
-
-      const clearAndPut = (name: string, items: any[]) => {
-        const store = tx.objectStore(name);
-        store.clear();
-        items.forEach(item => store.put(item));
-      };
-
-      clearAndPut('transactions', state.transactions);
-      clearAndPut('assets', state.assets);
-      clearAndPut('liabilities', state.liabilities);
-      clearAndPut('snapshots', state.snapshots);
-
-      const metaStore = tx.objectStore('meta');
-      metaStore.put({ key: 'hasLoadedOnce', value: true });
-
-      return new Promise((resolve, reject) => {
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        this.nodeFallbackStore = {
+          transactions: [...state.transactions],
+          assets: [...state.assets],
+          liabilities: [...state.liabilities],
+          snapshots: [...state.snapshots],
+          hasLoadedOnce: true
         };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error);
+        return;
+      }
+
+      try {
+        const db = await this.getDB();
+        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
+
+        const clearAndPut = (name: string, items: any[]) => {
+          const store = tx.objectStore(name);
+          store.clear();
+          items.forEach(item => store.put(item));
         };
-      });
-    } catch (e) {
-      this.nodeFallbackStore = {
-        transactions: [...state.transactions],
-        assets: [...state.assets],
-        liabilities: [...state.liabilities],
-        snapshots: [...state.snapshots],
-        hasLoadedOnce: true
-      };
-      return Promise.resolve();
-    }
+
+        clearAndPut('transactions', state.transactions);
+        clearAndPut('assets', state.assets);
+        clearAndPut('liabilities', state.liabilities);
+        clearAndPut('snapshots', state.snapshots);
+
+        const metaStore = tx.objectStore('meta');
+        metaStore.put({ key: 'hasLoadedOnce', value: true });
+
+        await new Promise<void>((resolve, reject) => {
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+          };
+        });
+      } catch (e) {
+        this.nodeFallbackStore = {
+          transactions: [...state.transactions],
+          assets: [...state.assets],
+          liabilities: [...state.liabilities],
+          snapshots: [...state.snapshots],
+          hasLoadedOnce: true
+        };
+      }
+    });
   }
 
   static async clearAll(): Promise<void> {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      this.nodeFallbackStore = {
-        transactions: [],
-        assets: [],
-        liabilities: [],
-        snapshots: [],
-        hasLoadedOnce: true
-      };
-      return Promise.resolve();
-    }
+    return this.enqueueSave(async () => {
+      if (this.simulateFailureOnce) {
+        this.simulateFailureOnce = false;
+        throw new Error('Simulated IndexedDB persistence failure');
+      }
 
-    try {
-      const db = await this.getDB();
-      const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
-      tx.objectStore('transactions').clear();
-      tx.objectStore('assets').clear();
-      tx.objectStore('liabilities').clear();
-      tx.objectStore('snapshots').clear();
-      tx.objectStore('meta').put({ key: 'hasLoadedOnce', value: true });
-      return new Promise((resolve, reject) => {
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        this.nodeFallbackStore = {
+          transactions: [],
+          assets: [],
+          liabilities: [],
+          snapshots: [],
+          hasLoadedOnce: true
         };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error);
+        return;
+      }
+
+      try {
+        const db = await this.getDB();
+        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
+        tx.objectStore('transactions').clear();
+        tx.objectStore('assets').clear();
+        tx.objectStore('liabilities').clear();
+        tx.objectStore('snapshots').clear();
+        tx.objectStore('meta').put({ key: 'hasLoadedOnce', value: true });
+        await new Promise<void>((resolve, reject) => {
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+          };
+        });
+      } catch (e) {
+        this.nodeFallbackStore = {
+          transactions: [],
+          assets: [],
+          liabilities: [],
+          snapshots: [],
+          hasLoadedOnce: true
         };
-      });
-    } catch (e) {
-      this.nodeFallbackStore = {
-        transactions: [],
-        assets: [],
-        liabilities: [],
-        snapshots: [],
-        hasLoadedOnce: true
-      };
-      return Promise.resolve();
-    }
+      }
+    });
   }
 }
