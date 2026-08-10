@@ -102,6 +102,8 @@ export interface TransactionQuery {
 export interface TransactionRepository {
   findMany(query: TransactionQuery): Promise<Transaction[]>;
   findManySync(query: TransactionQuery): Transaction[];
+  findAll(): Promise<Transaction[]>;
+  findAllSync(): Transaction[];
   append(transaction: Transaction): Promise<void>;
   appendMany(transactions: Transaction[]): Promise<void>;
 }
@@ -129,4 +131,7 @@ export interface FinancialRepositoryPort {
   assets: AssetRepository;
   liabilities: LiabilityRepository;
   snapshots: SnapshotRepository;
+  clearLocalData(): Promise<void> | void;
+  loadDemoData(): Promise<void> | void;
+  initialize(): Promise<void> | void;
 }
