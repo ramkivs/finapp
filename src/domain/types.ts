@@ -125,7 +125,7 @@ export interface LiabilityRepository {
 export interface SnapshotRepository {
   findAll(): Promise<NetWorthSnapshot[]>;
   findAllSync(): NetWorthSnapshot[];
-  create(snapshot: NetWorthSnapshot): Promise<void>;
+  create(snapshot?: NetWorthSnapshot): Promise<void>;
 }
 
 export interface FinancialRepositoryPort {
