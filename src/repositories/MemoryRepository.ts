@@ -14,6 +14,14 @@ export class MemoryTransactionRepository implements TransactionRepository {
     return useCanonicalLedger.getState().getFilteredTransactions(query);
   }
 
+  async findAll(): Promise<Transaction[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Transaction[] {
+    return useCanonicalLedger.getState().transactions;
+  }
+
   async append(transaction: Transaction): Promise<void> {
     const store = useCanonicalLedger.getState();
     if (transaction.type === 'Income') {
@@ -79,4 +87,16 @@ export class MemoryRepository implements FinancialRepositoryPort {
   public assets = new MemoryAssetRepository();
   public liabilities = new MemoryLiabilityRepository();
   public snapshots = new MemorySnapshotRepository();
+
+  async clearLocalData(): Promise<void> {
+    await useCanonicalLedger.getState().clearLocalData();
+  }
+
+  async loadDemoData(): Promise<void> {
+    await useCanonicalLedger.getState().loadDemoData();
+  }
+
+  async initialize(): Promise<void> {
+    await useCanonicalLedger.getState().initialize();
+  }
 }

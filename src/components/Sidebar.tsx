@@ -1,5 +1,6 @@
 import React from 'react';
-import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare, Database, Trash2 } from 'lucide-react';
+import { FinancialCommands } from '../application/commands';
 
 interface Props {
   activeTab: string;
@@ -18,6 +19,18 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
     { id: 'import', label: 'Import', icon: Upload },
     { id: 'calculators', label: 'Calculators', icon: Calculator },
   ];
+
+  const handleLoadDemo = async () => {
+    await FinancialCommands.loadDemoData();
+    alert('Demo dataset loaded successfully into canonical runtime and IndexedDB storage!');
+  };
+
+  const handleClearData = async () => {
+    if (window.confirm('Are you sure you want to clear all local financial data? This will clear transactions, assets, liabilities, snapshots, and import metadata.')) {
+      await FinancialCommands.clearLocalDevelopmentData();
+      alert('All local financial data cleared! Empty state persisted across browser reload.');
+    }
+  };
 
   return (
     <aside className="w-[240px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 flex-shrink-0 z-40">
@@ -67,6 +80,22 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
             </button>
           );
         })}
+
+        <button
+          onClick={handleLoadDemo}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition mb-1"
+        >
+          <Database size={19} />
+          <span>Load Demo Data</span>
+        </button>
+
+        <button
+          onClick={handleClearData}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition mb-1"
+        >
+          <Trash2 size={19} />
+          <span>Clear Dev Data</span>
+        </button>
 
         <button
           onClick={() => alert('What\'s New (v2.1.7): React 18 Production Build with 100% Zero-Literal Temporal Authority.')}

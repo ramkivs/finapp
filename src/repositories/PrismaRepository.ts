@@ -12,12 +12,18 @@ import {
  */
 export class PrismaTransactionRepository implements TransactionRepository {
   async findMany(query: TransactionQuery): Promise<Transaction[]> {
-    // Production implementation: await prisma.transaction.findMany({ where: ... });
     return this.findManySync(query);
   }
 
   findManySync(_query: TransactionQuery): Transaction[] {
-    // Fallback sync bridge for client-side rendering preview
+    return [];
+  }
+
+  async findAll(): Promise<Transaction[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Transaction[] {
     return [];
   }
 
@@ -69,7 +75,7 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
     return [];
   }
 
-  async create(_snapshot: NetWorthSnapshot): Promise<void> {
+  async create(_snapshot?: NetWorthSnapshot): Promise<void> {
     // Production implementation: await prisma.snapshot.create({ data: ... });
   }
 }
@@ -79,4 +85,16 @@ export class PrismaRepository implements FinancialRepositoryPort {
   public assets = new PrismaAssetRepository();
   public liabilities = new PrismaLiabilityRepository();
   public snapshots = new PrismaSnapshotRepository();
+
+  async clearLocalData(): Promise<void> {
+    // Production implementation: await prisma.transaction.deleteMany(); etc.
+  }
+
+  async loadDemoData(): Promise<void> {
+    // Production implementation
+  }
+
+  async initialize(): Promise<void> {
+    // Production implementation
+  }
 }
