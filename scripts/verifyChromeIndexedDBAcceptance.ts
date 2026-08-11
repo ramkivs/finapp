@@ -45,6 +45,38 @@ async function waitForServer(url: string, timeoutMs = 15000): Promise<boolean> {
   return false;
 }
 
+
+async function clickNav(page: Page, label: string) {
+  await page.evaluate(`
+    (() => {
+      const btns = Array.from(document.querySelectorAll("button"));
+      const found = btns.find(b => b.textContent && b.textContent.includes("` + label + `"));
+      if (found) found.click();
+    })()
+  `);
+  await new Promise(r => setTimeout(r, 400));
+}
+
+async function verifyNoDemoValuesInDOM(page: Page): Promise<{ clean: boolean; details: string }> {
+  return page.evaluate(`
+    (() => {
+      const text = document.body.innerText;
+      const forbidden = [
+        "482,910", "482910", "3,640,000", "3640000",
+        "1,800", "14,200",
+        "4.08%", "4.08", "+24.1% 1Y CAGR", "3,00,000",
+        "6.2 months", "1.5 Crore", "45,000/month"
+      ];
+      for (const f of forbidden) {
+        if (text.includes(f)) {
+          return { clean: false, details: "Found leaked demo string: " + f };
+        }
+      }
+      return { clean: true, details: "DOM clean of all demo strings" };
+    })()
+  `);
+}
+
 async function getLedgerStatsFromPage(page: Page) {
   return page.evaluate(`
     new Promise(function(resolveMain, rejectMain) {
@@ -146,6 +178,24 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       `Open FinBoom in Chrome: Verified EMPTY state (${stats.transactions} tx, ${stats.assets} assets, ${stats.liabilities} liab, ${stats.snapshots} snaps)`
     );
 
+    // TEST-36: Fresh rendered UI contains no demo account/portfolio values
+    await clickNav(page, "Money");
+    await clickNav(page, "Accounts");
+    let domCheck = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean, "TEST-36", `Fresh rendered UI contains no demo account/portfolio values (${domCheck.details})`);
+
+    // TEST-37: Fresh rendered UI contains no demo budget leakage alerts
+    await clickNav(page, "Budget");
+    domCheck = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean, "TEST-37", `Fresh rendered UI contains no demo budget leakage alerts (${domCheck.details})`);
+
+    // TEST-38: Fresh rendered UI contains no demo calculator/Essentials values
+    await clickNav(page, "Calculators");
+    domCheck = await verifyNoDemoValuesInDOM(page);
+    await clickNav(page, "Essentials");
+    const domCheckEss = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean && domCheckEss.clean, "TEST-38", `Fresh rendered UI contains no demo calculator/Essentials values (DOM verified empty/not configured)`);
+
     // Step 3: Load Demo Data -> Verify 16 tx / 3 assets / 1 liability / 3 snapshots
     await page.evaluate(`
       (() => {
@@ -164,6 +214,10 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       'Step 3',
       `Load Demo Data in Chrome: Verified ${stats.transactions} tx / ${stats.assets} assets / ${stats.liabilities} liability / ${stats.snapshots} snapshots in real Chrome IndexedDB`
     );
+
+    await clickNav(page, "Overview");
+    const hasDemoCagr = await page.evaluate(`document.body.innerText.includes("+24.1%")`);
+    check(hasDemoCagr, "TEST-39", "Load Demo Data renders canonical-derived dashboard values (+24.1% CAGR confirmed in DOM from demo snapshots)");
 
     // Step 4: Refresh -> Verify data remains
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -194,6 +248,18 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       `Clear Dev Data in Chrome: Verified all = 0 across Chrome IndexedDB stores (hasLoadedOnce = true)`
     );
 
+    domCheck = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean, "TEST-40", `Clear Dev Data removes demo values from every dashboard (${domCheck.details})`);
+
+    const routes = ["Overview", "Wealth", "Money", "Essentials", "Calculators"];
+    let allRoutesClean = true;
+    for (const r of routes) {
+      await clickNav(page, r);
+      const chk = await verifyNoDemoValuesInDOM(page);
+      if (!chk.clean) allRoutesClean = false;
+    }
+    check(allRoutesClean, "TEST-41", "Route navigation after Clear does not restore demo values across all 5 app tabs");
+
     // Step 6: Refresh -> Verify all = 0
     await page.reload({ waitUntil: 'domcontentloaded' });
     stats = await getLedgerStatsFromPage(page);
@@ -202,6 +268,9 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       'Step 6',
       `Refresh after Clear in Chrome: Verified all = 0 STILL (demo data not reseeded)`
     );
+
+    domCheck = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean, "TEST-42", `Browser reload after Clear does not restore demo values in rendered DOM`);
 
     // Step 7: Close browser -> Reopen -> Verify all = 0
     await browser.close();
@@ -221,6 +290,9 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       'Step 7',
       `Reopened browser process -> Verify all = 0 STILL from persistent Chrome IndexedDB meta flag`
     );
+
+    domCheck = await verifyNoDemoValuesInDOM(page);
+    check(domCheck.clean, "TEST-43", `Browser restart after Clear does not restore demo values across persistent Chrome profile`);
 
     // Step 8: Import actual CSV -> Verify rows appear (includes -1250.00 negative amount!)
     const csvContent = `Date,Title,Narration,Amount,Type,Account
@@ -329,7 +401,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
   }
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');
-  console.log(`CHROME REAL INDEXEDDB ACCEPTANCE SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
+  console.log(`CHROME REAL INDEXEDDB ACCEPTANCE SUITE (WP-15) SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');
 
   if (failCount > 0) {

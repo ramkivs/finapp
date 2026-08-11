@@ -32,6 +32,17 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
   const ttmMetric = FinancialMetricService.getMetric('TTM_REALIZED_DIVIDEND', transactions, assets, liabilities);
   const avgMetric = FinancialMetricService.getMetric('MONTHLY_AVERAGE_DIVIDEND', transactions, assets, liabilities);
 
+  const liquidBankTotal = assets
+    .filter(a => a.name.toLowerCase().includes("bank") || a.name.toLowerCase().includes("account") || a.name.toLowerCase().includes("liquid") || a.name.includes("4 Bank"))
+    .reduce((s, a) => s + a.amount, 0);
+
+  const investedPortfolioTotal = assets
+    .filter(a => a.name.toLowerCase().includes("brokerage") || a.name.toLowerCase().includes("invest") || a.name.toLowerCase().includes("zerodha") || a.name.toLowerCase().includes("groww") || a.name.toLowerCase().includes("upstox") || a.name.includes("3 Brokerages"))
+    .reduce((s, a) => s + a.amount, 0);
+
+  const hasOttLeakage = transactions.some(t => t.title.toLowerCase().includes("netflix") || t.title.toLowerCase().includes("prime") || t.title.toLowerCase().includes("disney") || t.category === "SUBSCRIPTION" || (t.notes && t.notes.toLowerCase().includes("ott")));
+  const hasDiningLeakage = transactions.some(t => t.category === "DINING" || t.title.toLowerCase().includes("swiggy") || t.title.toLowerCase().includes("zomato"));
+
   const handleSearchChange = (val: string) => {
     setSearchInput(val);
     setSearchQuery(val);
@@ -319,35 +330,50 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
               Rule-based detection of subscription bloat, anomalous delivery spikes, and potentially unused mandates.
             </p>
 
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                  1
+            {transactions.length === 0 || (!hasOttLeakage && !hasDiningLeakage) ? (
+              <div className="p-8 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-center">
+                <div className="font-bold text-gray-900 dark:text-white text-base mb-1">
+                  No Leakage Alerts Detected
                 </div>
-                <div>
-                  <div className="font-bold text-gray-900 dark:text-white text-sm">
-                    Duplicate OTT Subscriptions (₹1,800 / month)
-                  </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    Active auto-debits detected on HDFC Bank & ICICI Bank for Netflix, Amazon Prime & Disney+.
-                  </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Add transaction records to enable algorithmic subscription bloat and dining anomaly detection.
                 </div>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {hasOttLeakage && (
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
+                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                      1
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-white text-sm">
+                        Duplicate OTT Subscriptions (₹1,800 / month)
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                        Active auto-debits detected on HDFC Bank & ICICI Bank for Netflix, Amazon Prime & Disney+.
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                  2
-                </div>
-                <div>
-                  <div className="font-bold text-gray-900 dark:text-white text-sm">
-                    Anomalous Food Delivery Spike (+42% vs baseline in July)
+                {hasDiningLeakage && (
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
+                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                      2
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-white text-sm">
+                        Anomalous Food Delivery Spike (+42% vs baseline in July)
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                        July dining totaled ₹14,200 vs. historical ₹9,800 average. Equals 1 month of dividend cash flow from ITC!
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    July dining totaled ₹14,200 vs. historical ₹9,800 average. Equals 1 month of dividend cash flow from ITC!
-                  </div>
-                </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -359,20 +385,20 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
               <div className="text-xs font-semibold text-gray-500 mb-1">Liquid Bank Balances (4 Accounts)</div>
               <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                <CurrencyValue value={482910} />
+                <CurrencyValue value={liquidBankTotal} />
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-                HDFC, ICICI, SBI, Axis
+                {liquidBankTotal > 0 ? "HDFC, ICICI, SBI, Axis" : "No bank accounts registered"}
               </span>
             </div>
 
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
               <div className="text-xs font-semibold text-gray-500 mb-1">Invested Portfolio (3 Brokerages)</div>
               <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                <CurrencyValue value={3640000} />
+                <CurrencyValue value={investedPortfolioTotal} />
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">
-                Zerodha, Groww, Upstox
+                {investedPortfolioTotal > 0 ? "Zerodha, Groww, Upstox" : "No brokerage accounts registered"}
               </span>
             </div>
 
