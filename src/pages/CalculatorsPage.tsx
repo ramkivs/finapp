@@ -20,7 +20,7 @@ export const CalculatorsPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
           <div className="text-xs font-semibold text-gray-500 mb-1">Dividend Yield Calculator</div>
-          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">{yieldMetric.value}%</div>
+          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">{yieldMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${yieldMetric.value}%`}</div>
           <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
             TTM Yield on Invested Capital
           </span>
@@ -28,7 +28,7 @@ export const CalculatorsPage: React.FC = () => {
 
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
           <div className="text-xs font-semibold text-gray-500 mb-1">Net Worth CAGR</div>
-          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">+{cagrMetric.value}%</div>
+          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">{cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}</div>
           <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">
             1-Year Compound Growth
           </span>

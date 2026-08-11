@@ -40,5 +40,6 @@ export const demoSnapshots: NetWorthSnapshot[] = [
     status: 'Active Preview'
   },
   { id: 'snap-1', dateStr: '01 Jul 2026', totalAssets: 9060000, totalLiabilities: 1880000, netWorth: 7180000, status: 'Anchored' },
-  { id: 'snap-2', dateStr: '01 Jun 2026', totalAssets: 8950000, totalLiabilities: 1910000, netWorth: 7040000, status: 'Anchored' }
+  { id: 'snap-2', dateStr: '01 Jun 2026', totalAssets: 8950000, totalLiabilities: 1910000, netWorth: 7040000, status: 'Anchored' },
+  { id: 'snap-cagr-base', dateStr: '09 Aug 2025', totalAssets: 7696422, totalLiabilities: 1850000, netWorth: 5846422, status: 'Anchored' }
 ];

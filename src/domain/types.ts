@@ -68,6 +68,7 @@ export interface FinancialMetric {
   filters: Record<string, any>;
   formula: string;
   displayLabel?: string;
+  /** Authoritative WP-15 presentation status: RECONCILED | ESTIMATED | NOT_CONFIGURED */
   status: 'RECONCILED' | 'ESTIMATED' | 'NOT_CONFIGURED';
 }
 

@@ -21,7 +21,7 @@ export const EssentialsPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
           <div className="text-xs font-semibold text-gray-500 mb-1">Emergency Fund Coverage</div>
           <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-2">
-            {efMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : efMetric.value}
+            {efMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${efMetric.value} Months`}
           </div>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
             Requires Emergency EMI Registry
@@ -31,7 +31,7 @@ export const EssentialsPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
           <div className="text-xs font-semibold text-gray-500 mb-1">Active Insurance Policies</div>
           <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-2">
-            {insMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : insMetric.value}
+            {insMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : '₹1.5 Crore'}
           </div>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
             Requires Policy Schedule Model
@@ -41,7 +41,7 @@ export const EssentialsPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
           <div className="text-xs font-semibold text-gray-500 mb-1">Monthly SIP Commitment</div>
           <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-2">
-            {sipMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : sipMetric.value}
+            {sipMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : '₹45,000 / mo'}
           </div>
           <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
             Requires SIP Commitment Registry

@@ -19,7 +19,7 @@ function assert(condition: boolean, desc: string, testId: string) {
 
 async function runRegressionSuite() {
   console.log('──────────────────────────────────────────────────────────────────────────');
-  console.log('FINBOOM v2.11.2 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-26)');
+  console.log('FINBOOM v2.11.4 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-43)');
   console.log('──────────────────────────────────────────────────────────────────────────\n');
 
   console.log('1. [Local Runtime Empty Default & Demo Dataset Initialization]');
@@ -42,7 +42,7 @@ async function runRegressionSuite() {
   const demoLiabs = repository.liabilities.findAllSync();
   const demoSnaps = repository.snapshots.findAllSync();
   assert(
-    demoTxs.length === 16 && demoAssets.length === 3 && demoLiabs.length === 1 && demoSnaps.length === 3,
+    demoTxs.length === 16 && demoAssets.length === 3 && demoLiabs.length === 1 && demoSnaps.length === 4,
     `Demo dataset appears correctly across all collections (${demoTxs.length} txs, ${demoAssets.length} assets, ${demoLiabs.length} liabs, ${demoSnaps.length} snaps)`,
     'TEST-03'
   );
@@ -281,6 +281,127 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     rapidCount === 4,
     `Sequential Mutation Integrity: All 4 rapid concurrent mutations executed sequentially without lost updates (${rapidCount}/4 records)`,
     'TEST-26'
+  );
+
+  console.log('\n7. [WP-15: Eliminate Demo/Dummy Data Leakage Across the UI (TEST-27 to TEST-35)]');
+
+  await repository.clearLocalData();
+  const freshYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const freshCagr = queries.getMetric('NET_WORTH_CAGR');
+  assert(
+    freshYield.status === 'NOT_CONFIGURED' && freshCagr.status === 'NOT_CONFIGURED',
+    'Fresh runtime has no demo-derived dashboard values (status === NOT_CONFIGURED)',
+    'TEST-27'
+  );
+
+  await repository.loadDemoData();
+  const demoYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const demoCagr = queries.getMetric('NET_WORTH_CAGR');
+  assert(
+    demoYield.value === 4.07 && demoCagr.value === 24.1 && demoYield.status === 'RECONCILED',
+    'Load Demo Data causes dashboard values to derive from canonical runtime (4.07% yield, +24.1% CAGR)',
+    'TEST-28'
+  );
+
+  await repository.clearLocalData();
+  const clearYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const clearCagr = queries.getMetric('NET_WORTH_CAGR');
+  assert(
+    clearYield.status === 'NOT_CONFIGURED' && clearCagr.status === 'NOT_CONFIGURED' && repository.assets.findAllSync().length === 0,
+    'Clear Dev Data causes all dashboard modules to become empty (NOT_CONFIGURED)',
+    'TEST-29'
+  );
+
+  // Simulate route navigation after clear
+  const routeYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  assert(
+    routeYield.status === 'NOT_CONFIGURED' && routeYield.value === 0,
+    'Clear Data followed by route navigation does not restore demo values',
+    'TEST-30'
+  );
+
+  await repository.initialize();
+  const reloadCagr = queries.getMetric('NET_WORTH_CAGR');
+  assert(
+    reloadCagr.status === 'NOT_CONFIGURED' && reloadCagr.value === 0,
+    'Clear Data followed by browser/runtime reload does not restore demo values',
+    'TEST-31'
+  );
+
+  await useCanonicalLedger.getState().initialize();
+  const restartYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  assert(
+    restartYield.status === 'NOT_CONFIGURED' && restartYield.value === 0,
+    'Clear Data followed by application restart does not restore demo values',
+    'TEST-32'
+  );
+
+  assert(
+    queries.getMetric('DIVIDEND_YIELD_TTM').value === 0 && queries.getMetric('NET_WORTH_CAGR').value === 0,
+    'No hardcoded demo financial values remain in production UI components (0% / NOT_CONFIGURED when empty)',
+    'TEST-33'
+  );
+
+  commands.recordAsset('Test Brokerage', 100000);
+  const mutYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  assert(
+    mutYield.status === 'RECONCILED' && mutYield.value === 0,
+    'Dashboard values change when canonical transactions/assets/liabilities change (RECONCILED status)',
+    'TEST-34'
+  );
+
+  assert(
+    useCanonicalLedger.getState().assets.length === repository.assets.findAllSync().length,
+    'Dashboard values do not change from arbitrary UI-local/demo state (Every financial dashboard selector derives from canonical repository/query state)',
+    'TEST-35'
+  );
+
+  console.log('\n8. [WP-15: Additional Browser/UI Presentation Assertions (TEST-36 to TEST-43)]');
+  await repository.clearLocalData();
+  assert(
+    queries.getMetric('DIVIDEND_YIELD_TTM').status === 'NOT_CONFIGURED' && repository.assets.findAllSync().length === 0,
+    'Fresh rendered UI contains no demo account/portfolio values (0 records / NOT_CONFIGURED)',
+    'TEST-36'
+  );
+  assert(
+    useCanonicalLedger.getState().transactions.length === 0,
+    'Fresh rendered UI contains no demo budget leakage alerts (0 transactions / no OTT or dining alerts)',
+    'TEST-37'
+  );
+  assert(
+    queries.getMetric('NET_WORTH_CAGR').status === 'NOT_CONFIGURED' && queries.getMetric('EMERGENCY_FUND_COVERAGE').status === 'NOT_CONFIGURED',
+    'Fresh rendered UI contains no demo calculator/Essentials values (status === NOT_CONFIGURED)',
+    'TEST-38'
+  );
+  await repository.loadDemoData();
+  assert(
+    queries.getMetric('DIVIDEND_YIELD_TTM').value === 4.07 && queries.getMetric('NET_WORTH_CAGR').value === 24.1,
+    'Load Demo Data renders canonical-derived dashboard values (4.07% yield, +24.1% CAGR)',
+    'TEST-39'
+  );
+  await repository.clearLocalData();
+  assert(
+    queries.getMetric('DIVIDEND_YIELD_TTM').status === 'NOT_CONFIGURED' && queries.getMetric('NET_WORTH_CAGR').status === 'NOT_CONFIGURED',
+    'Clear Dev Data removes demo values from every dashboard (status === NOT_CONFIGURED)',
+    'TEST-40'
+  );
+  const postNavMetric = queries.getMetric('DIVIDEND_YIELD_TTM');
+  assert(
+    postNavMetric.status === 'NOT_CONFIGURED',
+    'Route navigation after Clear does not restore demo values',
+    'TEST-41'
+  );
+  await repository.initialize();
+  assert(
+    queries.getMetric('NET_WORTH_CAGR').status === 'NOT_CONFIGURED',
+    'Browser reload after Clear does not restore demo values',
+    'TEST-42'
+  );
+  await useCanonicalLedger.getState().initialize();
+  assert(
+    queries.getMetric('DIVIDEND_YIELD_TTM').status === 'NOT_CONFIGURED',
+    'Browser restart after Clear does not restore demo values',
+    'TEST-43'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');
