@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare, Database, Trash2 } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Database, Trash2 } from 'lucide-react';
 import { FinancialCommands } from '../application/commands';
 
 interface Props {
@@ -33,94 +33,89 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
   };
 
   return (
-    <aside className="w-[240px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 flex-shrink-0 z-40">
-      <div className="p-6 font-serif text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-        FinBoom
+    <aside className="w-[240px] bg-[#07111C] border-r border-[#233548] flex flex-col h-screen sticky top-0 flex-shrink-0 z-40 text-[#F5F8FC]">
+      <div className="p-6 flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#38BDF8] to-[#8B5CF6] flex items-center justify-center font-black text-[#07111C] text-lg shadow-sm">
+          F
+        </div>
+        <div className="font-sans text-xl font-extrabold tracking-tight text-[#F5F8FC]">
+          FINBOOM
+        </div>
       </div>
 
-      <nav className="px-3 py-2 flex-1 overflow-y-auto">
-        {navItems.map(item => {
-          const Icon = item.icon;
-          const active = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition mb-1 ${
-                active
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <Icon size={19} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-
-        <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-4 pt-5 pb-2">
-          TOOLS
+      <nav className="px-3 py-2 flex-1 overflow-y-auto space-y-6">
+        <div>
+          <div className="px-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2">
+            Command Center
+          </div>
+          <div className="space-y-1">
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                    active
+                      ? 'bg-[#38BDF8] text-[#07111C] shadow-sm'
+                      : 'text-[#94A3B8] hover:bg-[#0D1824] hover:text-[#F5F8FC]'
+                  }`}
+                >
+                  <Icon size={18} className={active ? 'text-[#07111C]' : 'text-[#94A3B8]'} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {toolItems.map(item => {
-          const Icon = item.icon;
-          const active = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition mb-1 ${
-                active
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <Icon size={19} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        <div>
+          <div className="px-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2">
+            Tools & Ingestion
+          </div>
+          <div className="space-y-1">
+            {toolItems.map(item => {
+              const Icon = item.icon;
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                    active
+                      ? 'bg-[#38BDF8] text-[#07111C] shadow-sm'
+                      : 'text-[#94A3B8] hover:bg-[#0D1824] hover:text-[#F5F8FC]'
+                  }`}
+                >
+                  <Icon size={18} className={active ? 'text-[#07111C]' : 'text-[#94A3B8]'} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
+      <div className="p-4 border-t border-[#233548] space-y-2 bg-[#0D1824]/50">
+        <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1 px-1">
+          Data Management
+        </div>
 
         <button
           onClick={handleLoadDemo}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition mb-1"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-[#111F2D] hover:bg-[#142333] border border-[#233548] text-[#94A3B8] hover:text-[#F5F8FC] transition"
         >
-          <Database size={19} />
+          <Database size={15} className="text-[#38BDF8]" />
           <span>Load Demo Data</span>
         </button>
 
         <button
           onClick={handleClearData}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition mb-1"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-[#EF4444]/10 hover:bg-[#EF4444]/20 border border-[#EF4444]/30 text-[#EF4444] transition"
         >
-          <Trash2 size={19} />
+          <Trash2 size={15} />
           <span>Clear Dev Data</span>
-        </button>
-
-        <button
-          onClick={() => alert('What\'s New (v2.1.7): React 18 Production Build with 100% Zero-Literal Temporal Authority.')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition mb-1"
-        >
-          <Sparkles size={19} />
-          <span>What's New</span>
-        </button>
-
-        <button
-          onClick={() => alert('Settings: Global privacy persistence enabled in localStorage (finapp.privacy.masked).')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition mb-1"
-        >
-          <Settings size={19} />
-          <span>Settings</span>
-        </button>
-      </nav>
-
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
-        <button
-          onClick={() => alert('Feedback: Thank you! We read every suggestion from our community.')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-        >
-          <MessageSquare size={19} />
-          <span>Feedback</span>
         </button>
       </div>
     </aside>

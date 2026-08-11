@@ -2,15 +2,38 @@ import React, { useState } from 'react';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { CurrencyValue } from '../components/CurrencyValue';
-import { Search, Download, Plus, ChevronDown, Calendar } from 'lucide-react';
+import {
+  Search,
+  Download,
+  Plus,
+  ChevronDown,
+  Calendar,
+  Landmark,
+  PiggyBank
+} from 'lucide-react';
+import { KpiCard } from '../components/dashboard/KpiCard';
+import { ChartCard } from '../components/dashboard/ChartCard';
+import { EmptyState } from '../components/common/EmptyState';
 
 interface Props {
-  openModal: (modalName: 'modal-income' | 'modal-expense' | 'modal-transfer' | 'modal-custom-date') => void;
+  openModal: (
+    modalName:
+      | 'modal-income'
+      | 'modal-expense'
+      | 'modal-transfer'
+      | 'modal-custom-date'
+  ) => void;
   openSidebarTab: (tabId: string) => void;
 }
 
-export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
-  const [subTab, setSubTab] = useState<'transactions' | 'budget' | 'accounts' | 'insights'>('transactions');
+export const MoneyPage: React.FC<Props> = ({
+  openModal,
+  openSidebarTab
+}) => {
+  const [subTab, setSubTab] = useState<
+    'transactions' | 'budget' | 'accounts' | 'insights'
+  >('transactions');
+
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -29,133 +52,189 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
 
   const filtered = getFilteredTransactions();
 
-  const ttmMetric = FinancialMetricService.getMetric('TTM_REALIZED_DIVIDEND', transactions, assets, liabilities);
-  const avgMetric = FinancialMetricService.getMetric('MONTHLY_AVERAGE_DIVIDEND', transactions, assets, liabilities);
+  const ttmMetric = FinancialMetricService.getMetric(
+    'TTM_REALIZED_DIVIDEND',
+    transactions,
+    assets,
+    liabilities
+  );
+
+  const avgMetric = FinancialMetricService.getMetric(
+    'MONTHLY_AVERAGE_DIVIDEND',
+    transactions,
+    assets,
+    liabilities
+  );
 
   const liquidBankTotal = assets
-    .filter(a => a.name.toLowerCase().includes("bank") || a.name.toLowerCase().includes("account") || a.name.toLowerCase().includes("liquid") || a.name.includes("4 Bank"))
+    .filter(
+      a =>
+        a.name.toLowerCase().includes('bank') ||
+        a.name.toLowerCase().includes('account') ||
+        a.name.toLowerCase().includes('liquid') ||
+        a.name.includes('4 Bank')
+    )
     .reduce((s, a) => s + a.amount, 0);
 
   const investedPortfolioTotal = assets
-    .filter(a => a.name.toLowerCase().includes("brokerage") || a.name.toLowerCase().includes("invest") || a.name.toLowerCase().includes("zerodha") || a.name.toLowerCase().includes("groww") || a.name.toLowerCase().includes("upstox") || a.name.includes("3 Brokerages"))
+    .filter(
+      a =>
+        a.name.toLowerCase().includes('brokerage') ||
+        a.name.toLowerCase().includes('invest') ||
+        a.name.toLowerCase().includes('zerodha') ||
+        a.name.toLowerCase().includes('groww') ||
+        a.name.toLowerCase().includes('upstox') ||
+        a.name.includes('3 Brokerages')
+    )
     .reduce((s, a) => s + a.amount, 0);
 
-  const hasOttLeakage = transactions.some(t => t.title.toLowerCase().includes("netflix") || t.title.toLowerCase().includes("prime") || t.title.toLowerCase().includes("disney") || t.category === "SUBSCRIPTION" || (t.notes && t.notes.toLowerCase().includes("ott")));
-  const hasDiningLeakage = transactions.some(t => t.category === "DINING" || t.title.toLowerCase().includes("swiggy") || t.title.toLowerCase().includes("zomato"));
+  const hasOttLeakage = transactions.some(
+    t =>
+      t.title.toLowerCase().includes('netflix') ||
+      t.title.toLowerCase().includes('prime') ||
+      t.title.toLowerCase().includes('disney') ||
+      t.category === 'SUBSCRIPTION' ||
+      (t.notes && t.notes.toLowerCase().includes('ott'))
+  );
 
-  const handleSearchChange = (val: string) => {
+  const hasDiningLeakage = transactions.some(
+    t =>
+      t.category === 'DINING' ||
+      t.title.toLowerCase().includes('swiggy') ||
+      t.title.toLowerCase().includes('zomato')
+  );
+
+  const handleSearch = (val: string) => {
     setSearchInput(val);
     setSearchQuery(val);
   };
 
+  /*
+   * Preserve existing date-range behavior from the pre-WP16 Money page.
+   * 12M is the authoritative dividend-analysis range.
+   */
   const handleSelectRange = (range: string) => {
     setDateRange(range);
     setDateMenuOpen(false);
+
     if (range === '12M') {
       setFilterType('Income');
     }
   };
 
   return (
-    <div className="space-y-8" onClick={() => { setAddMenuOpen(false); setDateMenuOpen(false); }}>
-      {/* Title & Toolbar */}
+    <div
+      className="space-y-8"
+      onClick={() => {
+        setAddMenuOpen(false);
+        setDateMenuOpen(false);
+      }}
+    >
+      {/* Top bar */}
       <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Transactions</h1>
-          <div className="text-sm text-gray-500 mt-0.5">{filtered.length} entries</div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[#F5F8FC] tracking-tight">
+            Money & Cash Flow Center
+          </h1>
+
+          <p className="text-xs md:text-sm text-[#94A3B8] mt-1">
+            Reconciled ledger transactions, category budget allocations, and
+            institutional accounts.
+          </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Search Box */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-3.5 py-2 flex items-center gap-2.5 w-60 shadow-sm">
-            <Search size={16} className="text-gray-400" />
+          <div className="bg-[#0D1824] border border-[#233548] rounded-xl px-3.5 py-2 flex items-center gap-2.5 w-60 shadow-sm">
+            <Search size={16} className="text-[#94A3B8]" />
+
             <input
               type="text"
               value={searchInput}
-              onChange={e => handleSearchChange(e.target.value)}
+              onChange={e => handleSearch(e.target.value)}
               placeholder="Search ticker, company, notes..."
-              className="bg-transparent border-none text-sm w-full outline-none text-gray-900 dark:text-white placeholder-gray-400"
+              className="bg-transparent border-none text-xs text-[#F5F8FC] placeholder-[#64748B] w-full outline-none"
             />
           </div>
 
-          {/* Export Button */}
           <button
-            onClick={() => alert('Exported currently filtered canonical ledger transactions in Excel (.xlsx) format.')}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 font-semibold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            onClick={() =>
+              alert(
+                'Exported currently filtered canonical ledger transactions in Excel (.xlsx) format.'
+              )
+            }
+            className="bg-[#0D1824] hover:bg-[#111F2D] border border-[#233548] text-[#F5F8FC] font-semibold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition"
           >
-            <Download size={16} />
+            <Download size={15} />
             <span>Export</span>
           </button>
 
-          {/* + Add ⌄ Dropdown */}
-          <div className="relative inline-block" onClick={e => e.stopPropagation()}>
+          <div
+            className="relative inline-block"
+            onClick={e => e.stopPropagation()}
+          >
             <button
               onClick={() => setAddMenuOpen(!addMenuOpen)}
-              className="bg-green-700 hover:bg-green-800 text-white font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition"
+              className="bg-[#38BDF8] hover:bg-[#38BDF8]/90 text-[#07111C] font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition"
             >
-              <span>+ Add</span>
-              <ChevronDown size={16} />
+              <Plus size={15} />
+              <span>Add</span>
+              <ChevronDown size={15} />
             </button>
 
             {addMenuOpen && (
-              <div className="absolute right-0 top-11 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-1.5 z-50">
+              <div className="absolute right-0 top-11 w-56 bg-[#0D1824] border border-[#233548] rounded-2xl shadow-2xl p-2 z-50 space-y-1">
                 <button
-                  onClick={() => { openModal('modal-income'); setAddMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 transition"
+                  onClick={() => {
+                    openModal('modal-income');
+                    setAddMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#F5F8FC] transition"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-green-600">➕</span>
-                    <span>income</span>
-                  </div>
-                  <span className="text-xs text-gray-400 font-normal">Dividend / Salary</span>
-                </button>
-
-                <button
-                  onClick={() => { openModal('modal-expense'); setAddMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 transition"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-rose-600">➖</span>
-                    <span>expense</span>
-                  </div>
-                  <span className="text-xs text-gray-400 font-normal">Dining / Shopping</span>
-                </button>
-
-                <button
-                  onClick={() => { openModal('modal-transfer'); setAddMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 transition"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-cyan-600">⇄</span>
-                    <span>transfer</span>
-                  </div>
-                  <span className="text-xs text-gray-400 font-normal">₹0 Net Impact</span>
-                </button>
-
-                <div className="h-px bg-gray-200 dark:bg-gray-800 my-1" />
-
-                <button
-                  onClick={() => { openSidebarTab('import'); setAddMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 transition"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-cyan-600">📥</span>
-                    <span>import from csv</span>
-                  </div>
-                  <span className="text-xs text-gray-400 font-normal">5-Stage Pipeline</span>
+                  <span>Income</span>
+                  <span className="text-[10px] text-[#94A3B8]">
+                    Dividend/Salary
+                  </span>
                 </button>
 
                 <button
                   onClick={() => {
-                    alert('Recurring Expenses:\n1. Netflix (₹649/mo)\n2. Prime (₹1,499/yr)\n3. Cult Gym (₹3,500/mo - Potentially Unused Flag!)');
+                    openModal('modal-expense');
                     setAddMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 transition"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#F5F8FC] transition"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-amber-500">🔄</span>
-                    <span>manage recurring expenses</span>
-                  </div>
+                  <span>Expense</span>
+                  <span className="text-[10px] text-[#94A3B8]">
+                    Dining/Bills
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    openModal('modal-transfer');
+                    setAddMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#F5F8FC] transition"
+                >
+                  <span>Transfer</span>
+                  <span className="text-[10px] text-[#94A3B8]">
+                    ₹0 Net Impact
+                  </span>
+                </button>
+
+                <div className="h-px bg-[#233548] my-1" />
+
+                <button
+                  onClick={() => {
+                    openSidebarTab('import');
+                    setAddMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#38BDF8] transition"
+                >
+                  <span>Import from CSV</span>
+                  <span className="text-[10px] text-[#94A3B8]">
+                    Pipeline
+                  </span>
                 </button>
               </div>
             )}
@@ -163,72 +242,91 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
         </div>
       </div>
 
-      {/* Sub-Navigation Row */}
-      <div className="flex gap-6 border-b border-gray-200 dark:border-gray-800">
-        {(['transactions', 'budget', 'accounts', 'insights'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setSubTab(tab)}
-            className={`pb-3 font-bold text-sm capitalize transition border-b-2 -mb-px ${
-              subTab === tab
-                ? 'border-green-600 text-green-600 dark:text-green-400'
-                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Sub tabs */}
+      <div className="flex border-b border-[#233548] gap-8">
+        {(['transactions', 'budget', 'accounts', 'insights'] as const).map(
+          tab => (
+            <button
+              key={tab}
+              onClick={() => setSubTab(tab)}
+              className={`py-3 font-semibold text-xs tracking-wider uppercase border-b-2 transition -mb-px ${
+                subTab === tab
+                  ? 'border-[#38BDF8] text-[#38BDF8]'
+                  : 'border-transparent text-[#94A3B8] hover:text-[#F5F8FC]'
+              }`}
+            >
+              {tab === 'transactions' && 'Transactions'}
+              {tab === 'budget' && 'Budget'}
+              {tab === 'accounts' && 'Accounts'}
+              {tab === 'insights' && 'Insights'}
+            </button>
+          )
+        )}
       </div>
 
-      {/* SUB-TAB 1: TRANSACTIONS */}
+      {/* Transactions */}
       {subTab === 'transactions' && (
         <div className="space-y-6">
-          {/* Filter Bar */}
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1 inline-flex gap-1 shadow-sm">
-              {(['Expense', 'Income', 'Transfer', 'All'] as const).map(pill => (
-                <button
-                  key={pill}
-                  onClick={() => setFilterType(pill)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
-                    filterType === pill
-                      ? 'bg-green-700 text-white'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  {pill}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['Expense', 'Income', 'Transfer', 'All'] as const).map(ft => (
+              <button
+                key={ft}
+                onClick={() => setFilterType(ft)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                  filterType === ft
+                    ? 'bg-[#38BDF8] text-[#07111C]'
+                    : 'bg-[#0D1824] hover:bg-[#111F2D] border border-[#233548] text-[#94A3B8]'
+                }`}
+              >
+                {ft}
+              </button>
+            ))}
 
-            {/* Date Range Dropdown */}
-            <div className="relative inline-block" onClick={e => e.stopPropagation()}>
+            {/* Existing date range control restored into WP16 UI */}
+            <div
+              className="relative inline-block ml-auto"
+              onClick={e => e.stopPropagation()}
+            >
               <button
                 onClick={() => setDateMenuOpen(!dateMenuOpen)}
-                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 font-semibold text-xs px-4 py-2.5 rounded-full flex items-center gap-2 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                className="bg-[#0D1824] border border-[#233548] text-[#F5F8FC] font-semibold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-2 hover:bg-[#111F2D] transition"
               >
-                <Calendar size={14} />
+                <Calendar size={14} className="text-[#94A3B8]" />
                 <span>{dateRange}</span>
-                <ChevronDown size={14} />
+                <ChevronDown size={14} className="text-[#94A3B8]" />
               </button>
 
               {dateMenuOpen && (
-                <div className="absolute right-0 top-11 w-64 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-1.5 z-50 text-sm">
-                  {['This Week', 'This Month', 'Last 30 Days', 'Last Month', '3M', '6M', '12M', 'YTD'].map(r => (
+                <div className="absolute right-0 top-10 w-64 bg-[#0D1824] border border-[#233548] rounded-2xl shadow-2xl p-1.5 z-50">
+                  {[
+                    'This Week',
+                    'This Month',
+                    'Last 30 Days',
+                    'Last Month',
+                    '3M',
+                    '6M',
+                    '12M',
+                    'YTD'
+                  ].map(range => (
                     <button
-                      key={r}
-                      onClick={() => handleSelectRange(r)}
-                      className={`w-full text-left px-3.5 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold ${
-                        r === '12M' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-800 dark:text-gray-200'
-                      }`}
+                      key={range}
+                      onClick={() => handleSelectRange(range)}
+                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#F5F8FC] transition"
                     >
-                      {r === '12M' ? '12M (Last 12 Months - Dividends)' : r}
+                      {range === '12M'
+                        ? '12M (Last 12 Months - Dividends)'
+                        : range}
                     </button>
                   ))}
-                  <div className="h-px bg-gray-200 dark:bg-gray-800 my-1" />
+
+                  <div className="h-px bg-[#233548] my-1" />
+
                   <button
-                    onClick={() => { openModal('modal-custom-date'); setDateMenuOpen(false); }}
-                    className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold text-gray-800 dark:text-gray-200"
+                    onClick={() => {
+                      openModal('modal-custom-date');
+                      setDateMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#111F2D] text-xs font-semibold text-[#F5F8FC] transition"
                   >
                     Custom Range...
                   </button>
@@ -237,80 +335,83 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
             </div>
           </div>
 
-          {/* Table or Empty State */}
           {filtered.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-16 text-center text-gray-500 shadow-sm">
-              <p className="mb-5 text-sm">No expenses recorded yet in this date range. Add your first entry above.</p>
-              <button
-                onClick={() => handleSelectRange('12M')}
-                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-xs hover:bg-green-100 hover:text-green-700 transition"
-              >
-                + View Reconciled 12M Dividend & Cash Flow Ledger
-              </button>
-            </div>
+            <EmptyState
+              title="No transactions recorded"
+              description="Record income, expense, or transfer transactions, or import your bank statement CSV to populate this ledger."
+              actionLabel="+ Add Transaction"
+              onAction={() => openModal('modal-expense')}
+            />
           ) : (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-5 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
-                <span className="font-bold text-sm text-gray-900 dark:text-white">Canonical Financial Ledger (Source of Truth)</span>
-                <span className="px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-                  {dateRange} ({filterType})
-                </span>
-              </div>
+            <div className="bg-[#0D1824] border border-[#233548] rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                      <th className="py-3 px-6">Date</th>
-                      <th className="py-3 px-6">Security / Merchant</th>
-                      <th className="py-3 px-6">Narration / Statement Text</th>
-                      <th className="py-3 px-6">Account</th>
-                      <th className="py-3 px-6">Type</th>
-                      <th className="py-3 px-6">Amount (₹)</th>
+                    <tr className="bg-[#111F2D] border-b border-[#233548] text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                      <th className="py-3 px-5">Date</th>
+                      <th className="py-3 px-5">Title / Narration</th>
+                      <th className="py-3 px-5">Category</th>
+                      <th className="py-3 px-5">Account</th>
+                      <th className="py-3 px-5">Amount</th>
+                      <th className="py-3 px-5">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                    {filtered.map(row => {
-                      const isInc = row.type === 'Income';
-                      const isTr = row.type === 'Transfer';
-                      return (
-                        <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                          <td className="py-3.5 px-6 font-medium">{row.dateStr}</td>
-                          <td className="py-3.5 px-6">
-                            <div className="font-bold text-gray-900 dark:text-white">{row.title}</div>
-                            {row.notes && <div className="text-xs text-gray-400">{row.notes}</div>}
-                          </td>
-                          <td className="py-3.5 px-6">
-                            <code className="text-xs text-gray-500">{row.narration}</code>
-                          </td>
-                          <td className="py-3.5 px-6 text-gray-600 dark:text-gray-400">{row.account}</td>
-                          <td className="py-3.5 px-6">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                                isInc
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                  : isTr
-                                  ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
-                                  : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
-                              }`}
-                            >
-                              {row.type}
-                            </span>
-                          </td>
-                          <td
-                            className={`py-3.5 px-6 font-bold ${
-                              isInc
-                                ? 'text-green-700 dark:text-green-400'
-                                : isTr
-                                ? 'text-cyan-600 dark:text-cyan-400'
-                                : 'text-rose-600 dark:text-rose-400'
-                            }`}
-                          >
-                            {isInc ? '+' : isTr ? '' : '-'}
-                            <CurrencyValue value={row.amount} />
-                          </td>
-                        </tr>
-                      );
-                    })}
+
+                  <tbody className="divide-y divide-[#233548]/60 text-xs text-[#F5F8FC]">
+                    {filtered.map(t => (
+                      <tr
+                        key={t.id}
+                        className="hover:bg-[#111F2D]/60 transition"
+                      >
+                        <td className="py-3.5 px-5 whitespace-nowrap text-[#94A3B8]">
+                          {t.dateStr}
+                        </td>
+
+                        <td className="py-3.5 px-5 font-semibold">
+                          <div>{t.title}</div>
+
+                          {(t.narration || t.notes) && (
+                            <div className="text-[10px] text-[#64748B] mt-0.5 font-normal">
+                              {t.narration || t.notes}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-[#111F2D] border border-[#233548] text-[#94A3B8] text-[10px] font-bold">
+                            {t.category}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-5 text-[#94A3B8]">
+                          {t.account}
+                        </td>
+
+                        <td
+                          className={`py-3.5 px-5 font-extrabold whitespace-nowrap ${
+                            t.type === 'Income'
+                              ? 'text-[#22C55E]'
+                              : t.type === 'Expense'
+                                ? 'text-[#EF4444]'
+                                : 'text-[#38BDF8]'
+                          }`}
+                        >
+                          {t.type === 'Income'
+                            ? '+'
+                            : t.type === 'Expense'
+                              ? '-'
+                              : ''}
+
+                          <CurrencyValue value={t.amount} />
+                        </td>
+
+                        <td className="py-3.5 px-5">
+                          <span className="px-2 py-0.5 rounded-full bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/30 text-[10px] font-bold">
+                            {t.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -319,114 +420,165 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
         </div>
       )}
 
-      {/* SUB-TAB 2: BUDGET */}
+      {/* Budget */}
       {subTab === 'budget' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">
-              Budget & Leakage Detection Engine
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Rule-based detection of subscription bloat, anomalous delivery spikes, and potentially unused mandates.
-            </p>
-
-            {transactions.length === 0 || (!hasOttLeakage && !hasDiningLeakage) ? (
-              <div className="p-8 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-center">
-                <div className="font-bold text-gray-900 dark:text-white text-base mb-1">
-                  No Leakage Alerts Detected
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Add transaction records to enable algorithmic subscription bloat and dining anomaly detection.
-                </div>
+          <ChartCard
+            title="Monthly Category Plan & Leakage Audit"
+            subtitle="Reconciled expenditure auditing vs target budgets"
+          >
+            {transactions.length === 0 ? (
+              <div className="text-center py-10 text-xs font-semibold text-[#94A3B8]">
+                No Leakage Alerts Detected
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 mt-2">
                 {hasOttLeakage && (
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                      1
-                    </div>
+                  <div className="bg-[#EF4444]/10 border border-[#EF4444]/30 p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-gray-900 dark:text-white text-sm">
-                        Duplicate OTT Subscriptions (₹1,800 / month)
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                        Active auto-debits detected on HDFC Bank & ICICI Bank for Netflix, Amazon Prime & Disney+.
-                      </div>
+                      <h4 className="text-xs font-bold text-[#EF4444]">
+                        Subscription Leakage Alert
+                      </h4>
+                      <p className="text-xs text-[#94A3B8] mt-0.5">
+                        OTT subscriptions exceed recommended monthly allocation.
+                      </p>
                     </div>
+
+                    <span className="text-xs font-extrabold text-[#EF4444]">
+                      Action Req
+                    </span>
                   </div>
                 )}
 
                 {hasDiningLeakage && (
-                  <div className="flex items-start gap-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                      2
-                    </div>
+                  <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/30 p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-gray-900 dark:text-white text-sm">
-                        Anomalous Food Delivery Spike (+42% vs baseline in July)
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                        July dining totaled ₹14,200 vs. historical ₹9,800 average. Equals 1 month of dividend cash flow from ITC!
-                      </div>
+                      <h4 className="text-xs font-bold text-[#F59E0B]">
+                        Food Delivery Anomaly
+                      </h4>
+                      <p className="text-xs text-[#94A3B8] mt-0.5">
+                        Dining & delivery spend deviates from target baseline.
+                      </p>
                     </div>
+
+                    <span className="text-xs font-extrabold text-[#F59E0B]">
+                      Audit
+                    </span>
+                  </div>
+                )}
+
+                {!hasOttLeakage && !hasDiningLeakage && (
+                  <div className="text-center py-8 text-xs font-semibold text-[#22C55E]">
+                    All spending categories are operating within healthy
+                    allocation targets.
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </ChartCard>
         </div>
       )}
 
-      {/* SUB-TAB 3: ACCOUNTS */}
+      {/* Accounts */}
       {subTab === 'accounts' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-              <div className="text-xs font-semibold text-gray-500 mb-1">Liquid Bank Balances (4 Accounts)</div>
-              <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                <CurrencyValue value={liquidBankTotal} />
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-                {liquidBankTotal > 0 ? "HDFC, ICICI, SBI, Axis" : "No bank accounts registered"}
-              </span>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <KpiCard
+              title="Liquid Bank Accounts"
+              value={
+                liquidBankTotal > 0 ? (
+                  <CurrencyValue value={liquidBankTotal} />
+                ) : (
+                  '₹0 / empty'
+                )
+              }
+              subtitle="Savings & Checking balances"
+              icon={<Landmark size={18} />}
+            />
 
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-              <div className="text-xs font-semibold text-gray-500 mb-1">Invested Portfolio (3 Brokerages)</div>
-              <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">
-                <CurrencyValue value={investedPortfolioTotal} />
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">
-                {investedPortfolioTotal > 0 ? "Zerodha, Groww, Upstox" : "No brokerage accounts registered"}
-              </span>
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-              <div className="text-xs font-semibold text-gray-500 mb-1">Trailing Annual Dividend Income</div>
-              <div className="text-3xl font-black text-green-700 dark:text-green-400 mb-2">
-                <CurrencyValue value={ttmMetric.value} suffix=" / yr" />
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-                Reconciled Option A Authority
-              </span>
-            </div>
+            <KpiCard
+              title="Invested Portfolio"
+              value={
+                investedPortfolioTotal > 0 ? (
+                  <CurrencyValue value={investedPortfolioTotal} />
+                ) : (
+                  '₹0 / empty'
+                )
+              }
+              subtitle="Brokerages & Wealth assets"
+              icon={<PiggyBank size={18} />}
+            />
           </div>
+
+          {assets.length === 0 ? (
+            <EmptyState
+              title="No accounts registered"
+              description="Add your institutional bank accounts and brokerage accounts to populate this accounts view."
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {assets.map(a => (
+                <div
+                  key={a.name}
+                  className="bg-[#0D1824] border border-[#233548] p-5 rounded-2xl flex flex-col justify-between shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold text-[#94A3B8] uppercase">
+                      {a.name}
+                    </span>
+
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]" />
+                  </div>
+
+                  <div className="text-2xl font-extrabold text-[#F5F8FC]">
+                    <CurrencyValue value={a.amount} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* SUB-TAB 4: INSIGHTS */}
+      {/* Insights */}
       {subTab === 'insights' && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">
-            Actionable Financial Insights & Dividend Coverage
-          </h3>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            <strong>Why? ➔ Evidence ➔ Action</strong><br />
-            Over the last 12 months, your stocks generated a reconciled average monthly dividend of{' '}
-            <strong><CurrencyValue value={avgMetric.value} decimals={2} /></strong> (TTM = <CurrencyValue value={ttmMetric.value} />).
-            This covers <strong>44.14%</strong> of your essential fixed monthly rent and utility EMIs!
-          </p>
+        <div className="space-y-6">
+          <ChartCard
+            title="Empirical Money Insights"
+            subtitle="Automated ledger pattern analysis"
+          >
+            {transactions.length === 0 ? (
+              <div className="text-center py-12 text-xs text-[#94A3B8]">
+                No transaction insights yet — record income or expense
+                transactions to view empirical cash flow insights.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl">
+                  <h4 className="text-xs font-bold text-[#22C55E]">
+                    Trailing 12-Month Dividend Revenue
+                  </h4>
+
+                  <div className="text-lg font-extrabold text-[#F5F8FC] mt-1">
+                    <CurrencyValue value={ttmMetric.value} />
+                  </div>
+                </div>
+
+                <div className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl">
+                  <h4 className="text-xs font-bold text-[#38BDF8]">
+                    Monthly Average Payout
+                  </h4>
+
+                  <div className="text-lg font-extrabold text-[#F5F8FC] mt-1">
+                    <CurrencyValue
+                      value={avgMetric.value}
+                      decimals={2}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </ChartCard>
         </div>
       )}
     </div>
