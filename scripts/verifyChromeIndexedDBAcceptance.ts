@@ -1,6 +1,3 @@
-if (process.platform === 'linux' && fs.existsSync('/usr/local/lib')) {
-  process.env.LD_LIBRARY_PATH = `/usr/local/lib:${process.env.LD_LIBRARY_PATH || ''}`;
-}
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
@@ -155,7 +152,8 @@ async function runChromeAcceptanceSuite() {
 
   let browser: Browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox', `--user-data-dir=${PROFILE_DIR}`],
-    env: { ...process.env, LD_LIBRARY_PATH: `/usr/local/lib:${process.env.LD_LIBRARY_PATH || ''}` }
+    env: { ...process.env, LD_LIBRARY_PATH: `/home/user/.local/lib:${process.env.LD_LIBRARY_PATH || ''}` },
+    
   });
   const chromeVersion = await browser.version();
   console.log(`[Browser Identity]: ${chromeVersion} running against ${BASE_URL} (profile: ${PROFILE_DIR})\n`);

@@ -1,5 +1,8 @@
 import React from 'react';
 import { queries } from '../application';
+import { KpiCard } from '../components/dashboard/KpiCard';
+import { ChartCard } from '../components/dashboard/ChartCard';
+import { Percent, ArrowUpRight, ShieldCheck } from 'lucide-react';
 
 export const CalculatorsPage: React.FC = () => {
   const yieldMetric = queries.getMetric('DIVIDEND_YIELD_TTM');
@@ -9,41 +12,67 @@ export const CalculatorsPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-[#F5F8FC] tracking-tight">
           Financial Calculators
         </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-xs md:text-sm text-[#94A3B8] mt-1">
           Dividend Yield on Invested Capital, Net Worth CAGR, and Emergency EMI Target Planner.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-          <div className="text-xs font-semibold text-gray-500 mb-1">Dividend Yield Calculator</div>
-          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">{yieldMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${yieldMetric.value}%`}</div>
-          <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-            TTM Yield on Invested Capital
-          </span>
-        </div>
+        <KpiCard
+          title="Dividend Yield Calculator"
+          value={yieldMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${yieldMetric.value}%`}
+          subtitle="TTM Yield on Invested Capital"
+          status={yieldMetric.status}
+          icon={<Percent size={18} />}
+        />
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-          <div className="text-xs font-semibold text-gray-500 mb-1">Net Worth CAGR</div>
-          <div className="text-3xl font-black text-gray-900 dark:text-white mb-2">{cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}</div>
-          <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">
-            1-Year Compound Growth
-          </span>
-        </div>
+        <KpiCard
+          title="Net Worth CAGR"
+          value={cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}
+          subtitle="1-Year Compound Growth"
+          status={cagrMetric.status}
+          icon={<ArrowUpRight size={18} />}
+        />
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-          <div className="text-xs font-semibold text-gray-500 mb-1">Emergency Fund Goal</div>
-          <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-2">
-            {goalMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : goalMetric.value}
-          </div>
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
-            Requires Target EMI Schedule
-          </span>
-        </div>
+        <KpiCard
+          title="Emergency Fund Goal"
+          value={goalMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : goalMetric.value}
+          subtitle="Requires Target EMI Schedule"
+          status={goalMetric.status}
+          icon={<ShieldCheck size={18} />}
+        />
       </div>
+
+      <ChartCard
+        title="Authoritative Calculation Methodology"
+        subtitle="100% browser-based financial mathematics — nothing leaves your device"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl">
+            <h4 className="text-xs font-bold text-[#38BDF8]">Dividend Yield on Invested Capital</h4>
+            <p className="text-xs text-[#94A3B8] mt-1.5 leading-relaxed">
+              Calculates trailing 12-month realized dividend income divided by the total valuation of registered brokerage and wealth investment accounts.
+            </p>
+          </div>
+
+          <div className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl">
+            <h4 className="text-xs font-bold text-[#38BDF8]">Net Worth 1-Year CAGR</h4>
+            <p className="text-xs text-[#94A3B8] mt-1.5 leading-relaxed">
+              Computes annualized compound growth rate between canonical historical net worth snapshots: (EndingNetWorth / BeginningNetWorth) ^ (1 / years) - 1.
+            </p>
+          </div>
+
+          <div className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl">
+            <h4 className="text-xs font-bold text-[#38BDF8]">Emergency Fund Goal Target</h4>
+            <p className="text-xs text-[#94A3B8] mt-1.5 leading-relaxed">
+              Evaluates target 6-month liquid cash runway against essential monthly debt service and recurring expenditure commitments.
+            </p>
+          </div>
+        </div>
+      </ChartCard>
     </div>
   );
 };

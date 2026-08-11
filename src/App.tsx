@@ -12,7 +12,7 @@ import { CustomDateModal } from './components/CustomDateModal';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('money');
-  const [isDark, setIsDark] = useState<boolean>(false);
+  const [isDark, setIsDark] = useState<boolean>(true);
   const [activeModal, setActiveModal] = useState<
     null | 'modal-income' | 'modal-expense' | 'modal-transfer' | 'modal-custom-date'
   >(null);
@@ -27,7 +27,7 @@ export function App() {
   };
 
   return (
-    <div className={`flex min-h-screen w-full ${isDark ? 'dark bg-[#0b0f19]' : 'bg-[#faf9f5]'}`}>
+    <div className="flex min-h-screen w-full bg-[#07111C] text-[#F5F8FC] font-sans">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header toggleDark={toggleDark} isDark={isDark} />

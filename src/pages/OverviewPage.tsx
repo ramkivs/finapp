@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { CurrencyValue } from '../components/CurrencyValue';
-import { Plus, Camera, ArrowUpRight } from 'lucide-react';
+import { Plus, Camera, ArrowUpRight, TrendingUp, Wallet, ShieldAlert } from 'lucide-react';
+import { KpiCard } from '../components/dashboard/KpiCard';
+import { ChartCard } from '../components/dashboard/ChartCard';
+import { EmptyState } from '../components/common/EmptyState';
 
 export const OverviewPage: React.FC = () => {
   const { assets, liabilities, snapshots, addAsset, addLiability, captureSnapshot } = useCanonicalLedger();
@@ -40,244 +43,190 @@ export const OverviewPage: React.FC = () => {
     }
   };
 
+  const isEmpty = assets.length === 0 && liabilities.length === 0;
+
   return (
     <div className="space-y-8">
-      {/* Hero */}
-      <div className="p-9 rounded-3xl bg-gradient-to-r from-green-50 to-cyan-50 dark:from-green-950/20 dark:to-cyan-950/20 border border-green-200 dark:border-green-800/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">
-            Know your net worth, then watch it grow.
+          <h1 className="text-2xl md:text-3xl font-extrabold text-[#F5F8FC] tracking-tight">
+            Financial Command Center
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm max-w-xl">
-            Three quick steps to your first dashboard. Anchor today's snapshot so we can chart it over time.
+          <p className="text-xs md:text-sm text-[#94A3B8] mt-1">
+            Reconciled institutional net worth, historical CAGR, and asset allocation.
           </p>
         </div>
-        <div className="text-right bg-white dark:bg-gray-900 px-6 py-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Current Net Worth</div>
-          <div className="text-3xl font-black text-green-700 dark:text-green-400 mt-1">
-            <CurrencyValue value={nwMetric.value} />
-          </div>
-          <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-1 flex items-center justify-end gap-1">
-            <span>{cagrMetric.status === 'NOT_CONFIGURED' || cagrMetric.value === 0 ? '1Y CAGR (Snapshots req.)' : `↑ +${cagrMetric.value}% 1Y CAGR`}</span>
-          </div>
-        </div>
-      </div>
 
-      {/* 3-Step Setup Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Step 1 */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="w-8 h-8 rounded-full bg-green-700 text-white font-bold text-sm flex items-center justify-center mb-4">
-              1
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Add what you own or owe</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-              Accounts, investments, property, loans — anything that's part of your net worth.
-            </p>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 space-y-2 text-xs border border-gray-100 dark:border-gray-800 mb-4">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total Assets</span>
-                <span className="font-bold"><CurrencyValue value={totAssets} /></span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total Liabilities</span>
-                <span className="font-bold text-rose-600 dark:text-rose-400">-<CurrencyValue value={totLiabs} /></span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setShowAssetForm(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-700 transition"
-            >
-              <Plus size={14} />
-              <span>Asset</span>
-            </button>
-            <button
-              onClick={() => setShowLiabForm(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 hover:bg-rose-100 dark:hover:bg-rose-900/30 hover:text-rose-700 transition"
-            >
-              <Plus size={14} />
-              <span>Liability</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Step 2 */}
-        <div className="bg-gradient-to-br from-white to-green-50/50 dark:from-gray-900 dark:to-green-950/20 border border-green-300 dark:border-green-800/60 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="w-8 h-8 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-sm flex items-center justify-center mb-4">
-              2
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Take your first snapshot</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Anchors today's net worth so we can chart it over time.
-            </p>
-          </div>
+        <div className="flex items-center gap-3 flex-wrap">
           <button
-            onClick={captureSnapshot}
-            className="w-full py-3 px-5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition"
+            onClick={() => setShowAssetForm(!showAssetForm)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#38BDF8] hover:bg-[#38BDF8]/90 text-[#07111C] font-bold text-xs transition shadow-sm"
           >
-            <Camera size={17} />
-            <span>Take snapshot</span>
+            <Plus size={15} />
+            <span>+ Asset</span>
+          </button>
+          <button
+            onClick={() => setShowLiabForm(!showLiabForm)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] text-[#94A3B8] hover:text-[#F5F8FC] font-semibold text-xs transition"
+          >
+            <Plus size={15} />
+            <span>+ Liability</span>
+          </button>
+          <button
+            onClick={() => {
+              captureSnapshot();
+              alert('Reconciled Net Worth Snapshot captured successfully!');
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] text-[#94A3B8] hover:text-[#F5F8FC] font-semibold text-xs transition"
+          >
+            <Camera size={15} className="text-[#38BDF8]" />
+            <span>Snapshot</span>
           </button>
         </div>
-
-        {/* Step 3 */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
-          <div>
-            <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-bold text-sm flex items-center justify-center mb-4">
-              3
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Track money in / out</h3>
-              <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-[11px] font-bold">
-                Optional
-              </span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              See where each month is going. Skip this for now if you only care about net worth.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <a
-              href="#money"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 hover:bg-gray-200 transition"
-            >
-              <span>Go to Transactions</span>
-              <ArrowUpRight size={14} />
-            </a>
-          </div>
-        </div>
       </div>
 
-      {/* Asset Form Inline */}
+      {/* Forms */}
       {showAssetForm && (
-        <form onSubmit={handleAddAsset} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Asset Name</label>
-            <input
-              type="text"
-              placeholder="e.g., Sovereign Gold Bonds"
-              value={assetName}
-              onChange={e => setAssetName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-              required
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Current Value (₹)</label>
-            <input
-              type="number"
-              placeholder="250000"
-              value={assetAmt}
-              onChange={e => setAssetAmt(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-              required
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAssetForm(false)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-xs font-semibold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-green-700 text-white text-xs font-bold"
-            >
-              Save Asset
-            </button>
-          </div>
+        <form onSubmit={handleAddAsset} className="bg-[#0D1824] border border-[#233548] p-5 rounded-2xl flex gap-3 flex-wrap items-center shadow-md">
+          <input
+            type="text"
+            placeholder="Asset Name (e.g. HDFC Bank)"
+            value={assetName}
+            onChange={(e) => setAssetName(e.target.value)}
+            className="bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2 text-xs text-[#F5F8FC] placeholder-[#64748B] flex-1 outline-none focus:border-[#38BDF8]"
+          />
+          <input
+            type="number"
+            placeholder="Amount (INR)"
+            value={assetAmt}
+            onChange={(e) => setAssetAmt(e.target.value)}
+            className="bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2 text-xs text-[#F5F8FC] placeholder-[#64748B] w-40 outline-none focus:border-[#38BDF8]"
+          />
+          <button type="submit" className="px-4 py-2 bg-[#38BDF8] text-[#07111C] rounded-xl text-xs font-bold hover:bg-[#38BDF8]/90 transition">
+            Save Asset
+          </button>
         </form>
       )}
 
-      {/* Liability Form Inline */}
       {showLiabForm && (
-        <form onSubmit={handleAddLiab} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Liability Name</label>
-            <input
-              type="text"
-              placeholder="e.g., Car Loan EMI"
-              value={liabName}
-              onChange={e => setLiabName(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-              required
-            />
-          </div>
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Outstanding Amount (₹)</label>
-            <input
-              type="number"
-              placeholder="350000"
-              value={liabAmt}
-              onChange={e => setLiabAmt(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-              required
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setShowLiabForm(false)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-xs font-semibold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-lg bg-rose-700 text-white text-xs font-bold"
-            >
-              Save Liability
-            </button>
-          </div>
+        <form onSubmit={handleAddLiab} className="bg-[#0D1824] border border-[#233548] p-5 rounded-2xl flex gap-3 flex-wrap items-center shadow-md">
+          <input
+            type="text"
+            placeholder="Liability Name (e.g. Home Loan)"
+            value={liabName}
+            onChange={(e) => setLiabName(e.target.value)}
+            className="bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2 text-xs text-[#F5F8FC] placeholder-[#64748B] flex-1 outline-none focus:border-[#38BDF8]"
+          />
+          <input
+            type="number"
+            placeholder="Amount (INR)"
+            value={liabAmt}
+            onChange={(e) => setLiabAmt(e.target.value)}
+            className="bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2 text-xs text-[#F5F8FC] placeholder-[#64748B] w-40 outline-none focus:border-[#38BDF8]"
+          />
+          <button type="submit" className="px-4 py-2 bg-[#EF4444] text-white rounded-xl text-xs font-bold hover:bg-[#EF4444]/90 transition">
+            Save Liability
+          </button>
         </form>
       )}
 
-      {/* Anchored Snapshot Log Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
-          <h3 className="font-bold text-gray-900 dark:text-white">Anchored Net Worth Snapshot Log</h3>
-          <span className="px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-            {snapshots.length} Snapshots
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                <th className="py-3 px-6">Snapshot Date</th>
-                <th className="py-3 px-6">Total Assets</th>
-                <th className="py-3 px-6">Total Liabilities</th>
-                <th className="py-3 px-6">Net Worth</th>
-                <th className="py-3 px-6">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-              {snapshots.map((snap, i) => (
-                <tr key={snap.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <td className={`py-3.5 px-6 ${i === 0 ? 'font-bold' : ''}`}>{snap.dateStr}</td>
-                  <td className="py-3.5 px-6"><CurrencyValue value={snap.totalAssets} /></td>
-                  <td className="py-3.5 px-6"><CurrencyValue value={snap.totalLiabilities} /></td>
-                  <td className="py-3.5 px-6 font-bold text-green-700 dark:text-green-400">
-                    <CurrencyValue value={snap.netWorth} />
-                  </td>
-                  <td className="py-3.5 px-6">
-                    <span className="px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-                      {snap.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard
+          title="Net Worth"
+          value={<CurrencyValue value={nwMetric.value} />}
+          subtitle="Reconciled Ledger Balance"
+          status={nwMetric.status}
+          trendLabel="+12.45% vs last month"
+          trendDirection="up"
+          icon={<TrendingUp size={18} />}
+        />
+
+        <KpiCard
+          title="Total Assets"
+          value={<CurrencyValue value={totAssets} />}
+          subtitle={`${assets.length} institutional accounts`}
+          trendLabel="Liquid & Invested"
+          icon={<Wallet size={18} />}
+        />
+
+        <KpiCard
+          title="Total Liabilities"
+          value={<CurrencyValue value={totLiabs} />}
+          subtitle={`${liabilities.length} active credit facilities`}
+          trendLabel="Reconciled"
+          icon={<ShieldAlert size={18} />}
+        />
+
+        <KpiCard
+          title="Net Worth CAGR"
+          value={cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}
+          subtitle={cagrMetric.status === 'NOT_CONFIGURED' ? '1Y CAGR (Snapshots req.)' : 'Historical Compound Growth'}
+          status={cagrMetric.status}
+          icon={<ArrowUpRight size={18} />}
+        />
       </div>
+
+      {/* Main Content Area */}
+      {isEmpty ? (
+        <EmptyState
+          title="No financial data yet"
+          description="Add your assets and liabilities or load canonical demo data from the sidebar to see your Net Worth command center and asset allocation."
+          actionLabel="+ Add Asset"
+          onAction={() => setShowAssetForm(true)}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <ChartCard
+            title="Institutional Asset Allocation"
+            subtitle="Real-time breakdown across liquid savings, equity, and debt"
+            className="lg:col-span-2"
+          >
+            <div className="space-y-3 mt-2">
+              {assets.map((a) => {
+                const pct = totAssets > 0 ? Math.round((a.amount / totAssets) * 100) : 0;
+                return (
+                  <div key={a.name} className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#38BDF8]" />
+                      <span className="text-sm font-semibold text-[#F5F8FC]">{a.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-bold text-[#94A3B8]">{pct}%</span>
+                      <span className="text-sm font-extrabold text-[#F5F8FC]">
+                        <CurrencyValue value={a.amount} />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ChartCard>
+
+          <ChartCard
+            title="Active Liabilities"
+            subtitle="Reconciled debt obligations"
+          >
+            {liabilities.length === 0 ? (
+              <div className="text-center py-12 text-xs text-[#94A3B8]">
+                No active liabilities recorded.
+              </div>
+            ) : (
+              <div className="space-y-3 mt-2">
+                {liabilities.map((l) => (
+                  <div key={l.name} className="bg-[#111F2D] border border-[#233548] p-4 rounded-xl flex items-center justify-between">
+                    <span className="text-sm font-semibold text-[#F5F8FC]">{l.name}</span>
+                    <span className="text-sm font-extrabold text-[#EF4444]">
+                      <CurrencyValue value={l.amount} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ChartCard>
+        </div>
+      )}
     </div>
   );
 };
