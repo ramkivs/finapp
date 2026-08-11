@@ -67,7 +67,8 @@ export interface FinancialMetric {
   source: string;
   filters: Record<string, any>;
   formula: string;
-  status: 'RECONCILED' | 'ESTIMATED';
+  status: 'RECONCILED' | 'ESTIMATED' | 'NOT_CONFIGURED';
+  displayLabel?: string;
 }
 
 export interface FinancialSeries {

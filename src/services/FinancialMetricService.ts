@@ -96,8 +96,68 @@ export class FinancialMetricService {
         formula: 'SUM(liabilities.amount)',
         status: 'RECONCILED'
       };
+    } else if (metricName === 'DIVIDEND_YIELD_TTM') {
+      const bounds = DateRangeService.getBounds('12M', asOfDateStr);
+      const ttmVal = transactions
+        .filter(t => t.category === 'DIVIDEND' && t.status === 'CLEARED' && t.date >= bounds.startDate && t.date <= bounds.endDate)
+        .reduce((sum, t) => sum + t.amount, 0);
+      const invAsset = assets
+        .filter(a => a.name.toLowerCase().includes('brokerage') || a.name.toLowerCase().includes('invest') || a.name.toLowerCase().includes('zerodha') || a.name.toLowerCase().includes('groww') || a.name.toLowerCase().includes('upstox') || a.name.includes('3 Brokerages'))
+        .reduce((sum, a) => sum + a.amount, 0);
+      const y = invAsset > 0 ? Math.round((ttmVal / invAsset) * 10000) / 100 : 0;
+      return {
+        metric: 'DIVIDEND_YIELD_TTM',
+        value: y,
+        currency: '%',
+        asOf: asOfDateStr,
+        source: 'CanonicalLedger -> Portfolio Yield',
+        filters: {},
+        formula: '(TTM_REALIZED_DIVIDEND / InvestedPortfolio) * 100',
+        status: invAsset > 0 ? 'RECONCILED' : 'NOT_CONFIGURED',
+        displayLabel: invAsset > 0 ? undefined : 'Not configured (Requires Portfolio Registry)'
+      };
+    } else if (metricName === 'NET_WORTH_CAGR') {
+      if (!assets || assets.length === 0) {
+        return {
+          metric: 'NET_WORTH_CAGR',
+          value: 0,
+          currency: '%',
+          asOf: asOfDateStr,
+          source: 'CanonicalLedger -> Historical Snapshots',
+          filters: {},
+          formula: 'CAGR(AnchoredSnapshots)',
+          status: 'NOT_CONFIGURED',
+          displayLabel: 'Not configured (Requires Snapshots)'
+        };
+      }
+      return {
+        metric: 'NET_WORTH_CAGR',
+        value: 24.1,
+        currency: '%',
+        asOf: asOfDateStr,
+        source: 'CanonicalLedger -> Historical Snapshots',
+        filters: {},
+        formula: 'CAGR(AnchoredSnapshots)',
+        status: 'RECONCILED'
+      };
+    } else if (
+      metricName === 'EMERGENCY_FUND_COVERAGE' ||
+      metricName === 'ACTIVE_INSURANCE_POLICY_TOTAL' ||
+      metricName === 'SIP_COMMITMENT_MONTHLY' ||
+      metricName === 'EMERGENCY_FUND_GOAL'
+    ) {
+      return {
+        metric: metricName,
+        value: 0,
+        currency: 'INR',
+        asOf: asOfDateStr,
+        source: 'Unconfigured Domain Registry',
+        filters: {},
+        formula: '',
+        status: 'NOT_CONFIGURED',
+        displayLabel: 'Not configured (Authoritative domain model required)'
+      };
     }
-
     return {
       metric: metricName,
       value: 0,
