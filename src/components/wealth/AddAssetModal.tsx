@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AssetType, GeographyType } from '../../domain/types';
 import { useCanonicalLedger } from '../../store/useCanonicalLedger';
-import { X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -56,20 +56,20 @@ export const AddAssetModal: React.FC<Props> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#0D1824] border border-[#233548] rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#233548]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-800">
           <div>
-            <h3 className="text-lg font-extrabold text-[#F5F8FC]">
+            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
               {step === 1 ? 'Step 1: Select Asset Category' : `Step 2: Add ${selectedType} Asset`}
             </h3>
-            <p className="text-xs text-[#94A3B8] mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {step === 1 ? 'Choose an institutional asset class' : 'Enter asset valuation and metadata'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] flex items-center justify-center text-[#94A3B8] hover:text-[#F5F8FC] transition"
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
           >
             <X size={18} />
           </button>
@@ -81,46 +81,46 @@ export const AddAssetModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <button
                 key={cat.type}
                 onClick={() => handleSelectCategory(cat.type)}
-                className="bg-[#111F2D] hover:bg-[#142333] border border-[#233548] hover:border-[#38BDF8] p-4 rounded-xl text-left transition flex flex-col justify-between h-24"
+                className="bg-gray-50 dark:bg-gray-800 hover:bg-green-50 dark:hover:bg-green-950/20 border border-gray-200 dark:border-gray-700 hover:border-green-600 dark:hover:border-green-500 p-4 rounded-xl text-left transition flex flex-col justify-between h-24 group"
               >
-                <span className="text-sm font-bold text-[#F5F8FC]">{cat.type}</span>
-                <span className="text-[11px] text-[#94A3B8]">{cat.desc}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-400">{cat.type}</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">{cat.desc}</span>
               </button>
             ))}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-[#94A3B8] mb-1">Asset Name *</label>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Asset Name *</label>
               <input
                 type="text"
                 placeholder="e.g. HDFC Savings, Zerodha Equity"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#38BDF8]"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-green-600 dark:focus:border-green-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Valuation (INR) *</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Valuation (INR) *</label>
                 <input
                   type="number"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#38BDF8]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-green-600 dark:focus:border-green-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Geography</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Geography</label>
                 <select
                   value={geography}
                   onChange={(e) => setGeography(e.target.value as GeographyType)}
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#38BDF8]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-green-600 dark:focus:border-green-500"
                 >
                   <option value="India">India</option>
                   <option value="International">International</option>
@@ -131,32 +131,32 @@ export const AddAssetModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Currency (Metadata)</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Currency (Metadata)</label>
                 <input
                   type="text"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#38BDF8]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-green-600 dark:focus:border-green-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Tag (Optional)</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tag (Optional)</label>
                 <input
                   type="text"
                   placeholder="e.g. Core, High Growth"
                   value={tag}
                   onChange={(e) => setTag(e.target.value)}
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#38BDF8]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-green-600 dark:focus:border-green-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#233548] mt-6">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800 mt-6">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] text-[#94A3B8] hover:text-[#F5F8FC] text-xs font-semibold transition"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold transition"
               >
                 <ArrowLeft size={14} />
                 <span>Back</span>
@@ -164,7 +164,7 @@ export const AddAssetModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-[#38BDF8] hover:bg-[#38BDF8]/90 text-[#07111C] font-bold text-xs transition shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-xs transition shadow-sm"
               >
                 Save Asset
               </button>
