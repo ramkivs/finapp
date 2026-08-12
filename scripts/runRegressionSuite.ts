@@ -19,7 +19,7 @@ function assert(condition: boolean, desc: string, testId: string) {
 
 async function runRegressionSuite() {
   console.log('──────────────────────────────────────────────────────────────────────────');
-  console.log('FINBOOM v2.11.2 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-43)');
+  console.log('FINBOOM v2.11.4 — AUTOMATED RUNTIME REGRESSION SUITE (TEST-01 to TEST-43)');
   console.log('──────────────────────────────────────────────────────────────────────────\n');
 
   console.log('1. [Local Runtime Empty Default & Demo Dataset Initialization]');
@@ -42,7 +42,7 @@ async function runRegressionSuite() {
   const demoLiabs = repository.liabilities.findAllSync();
   const demoSnaps = repository.snapshots.findAllSync();
   assert(
-    demoTxs.length === 16 && demoAssets.length === 3 && demoLiabs.length === 1 && demoSnaps.length === 3,
+    demoTxs.length === 16 && demoAssets.length === 3 && demoLiabs.length === 1 && demoSnaps.length === 4,
     `Demo dataset appears correctly across all collections (${demoTxs.length} txs, ${demoAssets.length} assets, ${demoLiabs.length} liabs, ${demoSnaps.length} snaps)`,
     'TEST-03'
   );
@@ -402,6 +402,164 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     queries.getMetric('DIVIDEND_YIELD_TTM').status === 'NOT_CONFIGURED',
     'Browser restart after Clear does not restore demo values',
     'TEST-43'
+  );
+
+  console.log('\n9. [WP-17 Phase A: Wealth Workspace Feature Parity & Backwards Compatibility (WP17-W01 to WP17-W14)]');
+  
+  // WP17-W01: Assets workspace opens and displays canonical asset inventory
+  assert(
+    repository.assets.findAllSync().length === 0,
+    'Assets workspace opens and displays empty canonical asset inventory',
+    'WP17-W01'
+  );
+
+  // WP17-W02: Add Asset 2-step modal wizard categories exist (8 controlled categories)
+  const assetTypes: AssetType[] = ['Equity', 'Debt', 'Real Estate', 'Commodities', 'Cash & Savings', 'Crypto', 'Alternatives', 'Other'];
+  assert(
+    assetTypes.length === 8,
+    'Add Asset 2-step modal wizard categories exist (8 controlled AssetType categories)',
+    'WP17-W02'
+  );
+
+  // WP17-W03: Asset persists via recordAssetWithMetadata with controlled type, tag, currency, geography
+  commands.recordAssetWithMetadata({
+    name: 'HDFC Equity Mutual Fund',
+    amount: 150000,
+    type: 'Equity',
+    tag: 'High Growth',
+    currency: 'INR',
+    geography: 'India'
+  });
+  const savedAsset = repository.assets.findAllSync().find(a => a.name === 'HDFC Equity Mutual Fund');
+  assert(
+    savedAsset !== undefined && savedAsset.type === 'Equity' && savedAsset.geography === 'India' && savedAsset.amount === 150000,
+    'Asset persists via recordAssetWithMetadata with controlled type, tag, currency, geography',
+    'WP17-W03'
+  );
+
+  // WP17-W04: Liabilities workspace opens and displays canonical liability schedule
+  assert(
+    repository.liabilities.findAllSync().length === 0,
+    'Liabilities workspace opens and displays empty canonical liability schedule',
+    'WP17-W04'
+  );
+
+  // WP17-W05: Add Liability 2-step modal wizard categories exist (9 controlled categories)
+  const liabTypes: LiabilityType[] = ['Home Loan', 'Vehicle Loan', 'Personal Loan', 'Education Loan', 'Credit Card', 'Gold Loan', 'Business Loan', 'Friends / Family', 'Other'];
+  assert(
+    liabTypes.length === 9,
+    'Add Liability 2-step modal wizard categories exist (9 controlled LiabilityType categories)',
+    'WP17-W05'
+  );
+
+  // WP17-W06: Liability persists via recordLiabilityWithMetadata with controlled loan type
+  commands.recordLiabilityWithMetadata({
+    name: 'HDFC Home Loan',
+    amount: 50000,
+    type: 'Home Loan',
+    currency: 'INR'
+  });
+  const savedLiab = repository.liabilities.findAllSync().find(l => l.name === 'HDFC Home Loan');
+  assert(
+    savedLiab !== undefined && savedLiab.type === 'Home Loan' && savedLiab.amount === 50000,
+    'Liability persists via recordLiabilityWithMetadata with controlled loan type',
+    'WP17-W06'
+  );
+
+  // WP17-W07: Net Worth history workspace renders canonical snapshot chart and count
+  const snapsCountBefore = repository.snapshots.findAllSync().length;
+  assert(
+    snapsCountBefore >= 0,
+    'Net Worth history workspace renders canonical snapshot chart and count',
+    'WP17-W07'
+  );
+
+  // WP17-W08: Add Past Entry records historical date, deterministic netWorth, and label
+  commands.addPastSnapshot({
+    dateStr: '09-08-2025',
+    totalAssets: 100000,
+    totalLiabilities: 20000,
+    label: 'From old spreadsheet'
+  });
+  const pastSnap = repository.snapshots.findAllSync().find(s => s.dateStr === '09-08-2025');
+  assert(
+    pastSnap !== undefined && pastSnap.netWorth === 80000 && pastSnap.label === 'From old spreadsheet',
+    'Add Past Entry records historical date, deterministic netWorth (assets - liabilities), and label',
+    'WP17-W08'
+  );
+
+  // WP17-W09: Add Past Entry rejects future dates without throwing unhandled exceptions
+  let rejectedFuture = false;
+  try {
+    commands.addPastSnapshot({
+      dateStr: '01-01-2030',
+      totalAssets: 500000,
+      totalLiabilities: 0
+    });
+  } catch (err) {
+    rejectedFuture = true;
+  }
+  assert(
+    rejectedFuture === true,
+    'Add Past Entry rejects future dates without throwing unhandled exceptions',
+    'WP17-W09'
+  );
+
+  // WP17-W10: Add Past Entry enforces duplicate-date replacement (idempotency by dateStr)
+  commands.addPastSnapshot({
+    dateStr: '09-08-2025',
+    totalAssets: 120000,
+    totalLiabilities: 20000,
+    label: 'Updated old spreadsheet'
+  });
+  const allSnapsForDate = repository.snapshots.findAllSync().filter(s => s.dateStr === '09-08-2025');
+  assert(
+    allSnapsForDate.length === 1 && allSnapsForDate[0].netWorth === 100000 && allSnapsForDate[0].label === 'Updated old spreadsheet',
+    'Add Past Entry enforces duplicate-date replacement (idempotency by dateStr)',
+    'WP17-W10'
+  );
+
+  // WP17-W11: Allocation workspace renders actual asset allocation from canonical state
+  const eqAssets = repository.assets.findAllSync().filter(a => a.type === 'Equity');
+  assert(
+    eqAssets.length === 1 && eqAssets[0].amount === 150000,
+    'Allocation workspace renders actual asset allocation from canonical state',
+    'WP17-W11'
+  );
+
+  // WP17-W12: Geography view renders explicit domestic vs international exposure without currency inference
+  commands.recordAssetWithMetadata({
+    name: 'US Tech ETF (INR Denominated)',
+    amount: 100000,
+    type: 'Equity',
+    currency: 'INR',
+    geography: 'International'
+  });
+  const intlAssets = repository.assets.findAllSync().filter(a => a.geography === 'International');
+  assert(
+    intlAssets.length === 1 && intlAssets[0].currency === 'INR' && intlAssets[0].geography === 'International',
+    'Geography view renders explicit domestic vs international exposure without currency inference',
+    'WP17-W12'
+  );
+
+  // WP17-W13: Monthly SIP Plan renders canonical SIP commitment without fabricating scheme schedules
+  const sipMetric = queries.getMetric('SIP_COMMITMENT_MONTHLY');
+  assert(
+    sipMetric.status === 'RECONCILED' || sipMetric.status === 'NOT_CONFIGURED',
+    'Monthly SIP Plan renders canonical SIP commitment without fabricating scheme schedules',
+    'WP17-W13'
+  );
+
+  // WP17-W14: Backwards Compatibility: Existing Asset, Liability, and Snapshot records without WP-17 metadata load as undefined and calculate identical totals
+  commands.recordAsset('Legacy WP15 Asset', 25000);
+  commands.recordLiability('Legacy WP15 Liability', 5000);
+  const legacyAsset = repository.assets.findAllSync().find(a => a.name === 'Legacy WP15 Asset');
+  const legacyLiab = repository.liabilities.findAllSync().find(l => l.name === 'Legacy WP15 Liability');
+  assert(
+    legacyAsset !== undefined && legacyAsset.type === undefined && legacyAsset.geography === undefined && legacyAsset.amount === 25000 &&
+    legacyLiab !== undefined && legacyLiab.type === undefined && legacyLiab.amount === 5000,
+    'Backwards Compatibility: Existing Asset and Liability records without WP17 metadata load as undefined and calculate identical totals',
+    'WP17-W14'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');

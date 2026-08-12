@@ -1,50 +1,8 @@
-﻿# Dependencies
-node_modules/
-
-# Environment / secrets
 .env
-.env.*
-!.env.example
-
-# Production builds
+*.env
+node_modules/
 dist/
-build/
-
-# Test / coverage
 coverage/
-test-results/
-playwright-report/
-
-# Logs
-*.log
-logs/
-
-# Local databases
-*.db
-*.sqlite
-*.sqlite3
-
-# Temporary files
-tmp/
-temp/
-
-# IDE
-.vscode/*
-!.vscode/extensions.json
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Prisma local/generated artifacts
-.prisma/
-
-# Local reports / runtime artifacts
 reports/
-
-# Certificates / private keys
 *.pem
 *.key
-*.p12
-*.pfx
