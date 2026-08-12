@@ -1,3 +1,4 @@
+import { FinancialCommands } from '../application/commands';
 import { create } from 'zustand';
 import { APP_AS_OF_DATE, Transaction, Asset, Liability, NetWorthSnapshot } from '../domain/types';
 import { formatDisplayDate, DateRangeService } from '../services/DateRangeService';
@@ -39,7 +40,10 @@ interface LedgerState {
   addTransfer: (source: string, destination: string, amount: number) => void;
   addAsset: (name: string, amount: number) => void;
   addLiability: (name: string, amount: number) => void;
-  captureSnapshot: () => void;
+  addAssetWithMetadata: (params: { name: string; amount: number; type?: any; tag?: string; currency?: string; geography?: any }) => void;
+  addLiabilityWithMetadata: (params: { name: string; amount: number; type?: any; currency?: string }) => void;
+  addPastSnapshot: (params: { dateStr: string; totalAssets: number; totalLiabilities: number; label?: string }) => void;
+  captureSnapshot: (label?: string) => void;
   commitImportedRows: (validRows?: Transaction[]) => { appended: number; duplicates: number };
 
   // Queries
@@ -179,8 +183,20 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
     repository.liabilities.add({ name, amount });
   },
 
-  captureSnapshot: () => {
-    repository.snapshots.create();
+  addAssetWithMetadata: (params) => {
+    FinancialCommands.recordAssetWithMetadata(params);
+  },
+
+  addLiabilityWithMetadata: (params) => {
+    FinancialCommands.recordLiabilityWithMetadata(params);
+  },
+
+  addPastSnapshot: (params) => {
+    FinancialCommands.addPastSnapshot(params);
+  },
+
+  captureSnapshot: (label) => {
+    FinancialCommands.createSnapshot(label);
   },
 
   commitImportedRows: (validRows) => {
@@ -244,6 +260,7 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
 
 // Initialize storage automatically in browser
 if (typeof window !== 'undefined') {
+  (window as any).useCanonicalLedger = useCanonicalLedger;
   setTimeout(() => {
     useCanonicalLedger.getState().initialize();
   }, 0);

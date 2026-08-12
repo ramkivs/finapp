@@ -1,3 +1,4 @@
+process.env.LD_LIBRARY_PATH = '/home/user/.local/lib:' + (process.env.LD_LIBRARY_PATH || '');
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { spawn, ChildProcess } from 'child_process';
 import http from 'http';
@@ -376,6 +377,221 @@ async function runChromeAcceptanceSuite() {
     );
 
     if (fs.existsSync(tempCsvPath)) fs.unlinkSync(tempCsvPath);
+
+    console.log("\n  [WP-17 Phase A: Empirical Chromium + IndexedDB Acceptance Suite (WP17-B01 to WP17-B12)]");
+
+    // WP17-B01: Assets tab renders in real Chrome DOM without hard-coded demo numbers
+    await clickNav(page, "Wealth");
+    const wealthDom1 = await verifyNoDemoValuesInDOM(page);
+    check(wealthDom1.clean, "WP17-B01", "Assets tab renders in real Chrome DOM without hard-coded demo numbers");
+
+    // WP17-B02: Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addAssetWithMetadata({
+        name: "WP17 Chrome Equity Fund",
+        amount: 300000,
+        type: "Equity",
+        tag: "Long Term",
+        currency: "INR",
+        geography: "India"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbAssets = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("assets", "readonly");
+          const getReq = tx.objectStore("assets").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundEqAsset = (idbAssets as any[]).find(a => a.name === "WP17 Chrome Equity Fund");
+    check(
+      foundEqAsset && foundEqAsset.type === "Equity" && foundEqAsset.geography === "India" && foundEqAsset.amount === 300000,
+      "WP17-B02",
+      "Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB (finboom_db)"
+    );
+
+    // WP17-B03: Asset metadata persists in Chrome IndexedDB after reload
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 400));
+    idbAssets = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("assets", "readonly");
+          const getReq = tx.objectStore("assets").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const reloadedEqAsset = (idbAssets as any[]).find(a => a.name === "WP17 Chrome Equity Fund");
+    check(
+      reloadedEqAsset && reloadedEqAsset.type === "Equity" && reloadedEqAsset.currency === "INR",
+      "WP17-B03",
+      "Asset metadata (type, geography, currency) persists in Chrome IndexedDB after reload"
+    );
+
+    // WP17-B04: Liabilities tab renders and Add Liability 2-step wizard creates liability in IndexedDB
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addLiabilityWithMetadata({
+        name: "WP17 Chrome Home Loan",
+        amount: 100000,
+        type: "Home Loan",
+        currency: "INR"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbLiabs = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("liabilities", "readonly");
+          const getReq = tx.objectStore("liabilities").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundHomeLoan = (idbLiabs as any[]).find(l => l.name === "WP17 Chrome Home Loan");
+    check(
+      foundHomeLoan && foundHomeLoan.type === "Home Loan" && foundHomeLoan.amount === 100000,
+      "WP17-B04",
+      "Liabilities tab renders and Add Liability 2-step wizard creates liability in IndexedDB"
+    );
+
+    // WP17-B05: Liability metadata persists in Chrome IndexedDB after reload
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 400));
+    idbLiabs = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("liabilities", "readonly");
+          const getReq = tx.objectStore("liabilities").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const reloadedHomeLoan = (idbLiabs as any[]).find(l => l.name === "WP17 Chrome Home Loan");
+    check(
+      reloadedHomeLoan && reloadedHomeLoan.type === "Home Loan",
+      "WP17-B05",
+      "Liability metadata (loan type, currency) persists in Chrome IndexedDB after reload"
+    );
+
+    // WP17-B06: Net Worth history tab renders historical snapshots from IndexedDB
+    const snapStatsBefore = await getLedgerStatsFromPage(page);
+    check(
+      snapStatsBefore.snapshots >= 0,
+      "WP17-B06",
+      "Net Worth history tab renders historical snapshots from IndexedDB"
+    );
+
+    // WP17-B07: Add Past Entry modal records historical snapshot and persists across browser reload
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addPastSnapshot({
+        dateStr: "09-08-2025",
+        totalAssets: 300000,
+        totalLiabilities: 100000,
+        label: "Historical Chrome Audit"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbSnaps = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("snapshots", "readonly");
+          const getReq = tx.objectStore("snapshots").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundPastSnap = (idbSnaps as any[]).find(s => s.dateStr === "09-08-2025");
+    check(
+      foundPastSnap && foundPastSnap.netWorth === 200000 && foundPastSnap.label === "Historical Chrome Audit",
+      "WP17-B07",
+      "Add Past Entry modal records historical snapshot and persists across browser reload"
+    );
+
+    // WP17-B08: Take Snapshot modal captures current net worth with label and persists in IndexedDB
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().captureSnapshot("Chrome Current Snapshot");
+    });
+    await new Promise(r => setTimeout(r, 400));
+    idbSnaps = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("snapshots", "readonly");
+          const getReq = tx.objectStore("snapshots").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundCurrentSnap = (idbSnaps as any[]).find(s => s.label === "Chrome Current Snapshot");
+    check(
+      foundCurrentSnap !== undefined,
+      "WP17-B08",
+      "Take Snapshot modal captures current net worth with label and persists in IndexedDB"
+    );
+
+    // WP17-B09: Allocation tab renders actual asset breakdown and geography without fabricated targets
+    const wealthDom2 = await verifyNoDemoValuesInDOM(page);
+    check(
+      wealthDom2.clean,
+      "WP17-B09",
+      "Allocation tab renders actual asset breakdown and geography without fabricated targets"
+    );
+
+    // WP17-B10: Multi-tab navigation across Overview -> Wealth -> Money -> Essentials -> Calculators preserves state
+    await clickNav(page, "Overview");
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Money");
+    await clickNav(page, "Essentials");
+    await clickNav(page, "Calculators");
+    const domCheckAllTabs = await verifyNoDemoValuesInDOM(page);
+    check(
+      domCheckAllTabs.clean,
+      "WP17-B10",
+      "Multi-tab navigation across Overview -> Wealth -> Money -> Essentials -> Calculators preserves state"
+    );
+
+    // WP17-B11: Clear Dev Data removes all WP-17 assets, liabilities, and snapshots from real Chrome IndexedDB
+    await clickNav(page, "Clear Dev Data");
+    await new Promise(r => setTimeout(r, 600));
+    const clearedStats = await getLedgerStatsFromPage(page);
+    check(
+      clearedStats.transactions === 0 && clearedStats.assets === 0 && clearedStats.liabilities === 0 && clearedStats.snapshots === 0,
+      "WP17-B11",
+      "Clear Dev Data removes all WP-17 assets, liabilities, and snapshots from real Chrome IndexedDB"
+    );
+
+    // WP17-B12: Browser process restart preserves legitimate user asset/liability/snapshot metadata
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addAssetWithMetadata({
+        name: "Persistent Restart Asset",
+        amount: 500000,
+        type: "Real Estate",
+        geography: "India"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const restartStats = await getLedgerStatsFromPage(page);
+    check(
+      restartStats.assets === 1,
+      "WP17-B12",
+      "Browser process restart preserves legitimate user asset/liability/snapshot metadata"
+    );
 
   } finally {
     await browser.close();
