@@ -141,10 +141,16 @@ async function runChromeAcceptanceSuite() {
     fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
   }
 
-  serverProc = spawn('npx', ['vite', 'preview', '--strictPort', '--port', String(PORT), '--host', '127.0.0.1'], {
-    cwd: process.cwd(),
-    stdio: 'ignore'
-  });
+  const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  serverProc = spawn(
+    npxCommand,
+    ['vite', 'preview', '--strictPort', '--port', String(PORT), '--host', '127.0.0.1'],
+    {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+      shell: process.platform === 'win32'
+    }
+  );
 
   const ready = await waitForServer(BASE_URL);
   if (!ready) {
