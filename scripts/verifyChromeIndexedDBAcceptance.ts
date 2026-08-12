@@ -385,17 +385,37 @@ async function runChromeAcceptanceSuite() {
     const wealthDom1 = await verifyNoDemoValuesInDOM(page);
     check(wealthDom1.clean, "WP17-B01", "Assets tab renders in real Chrome DOM without hard-coded demo numbers");
 
-    // WP17-B02: Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB
+    // WP17-B02: Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB via real UI
+    await clickNav(page, "Add Asset");
+    await clickNav(page, "Equity");
     await page.evaluate(() => {
-      window.useCanonicalLedger.getState().addAssetWithMetadata({
-        name: "WP17 Chrome Equity Fund",
-        amount: 300000,
-        type: "Equity",
-        tag: "Long Term",
-        currency: "INR",
-        geography: "India"
-      });
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const nameInput = inputs.find(i => i.placeholder && i.placeholder.includes("HDFC Savings"));
+      const amountInput = inputs.find(i => i.placeholder === "0.00");
+      const tagInput = inputs.find(i => i.placeholder && i.placeholder.includes("Core"));
+      const select = document.querySelector("select");
+      if (nameInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(nameInput, "WP17 Chrome Equity Fund"); } else { nameInput.value = "WP17 Chrome Equity Fund"; }
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (amountInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(amountInput, "300000"); } else { amountInput.value = "300000"; }
+        amountInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (tagInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(tagInput, "Long Term"); } else { tagInput.value = "Long Term"; }
+        tagInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (select) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(select, "India"); } else { select.value = "India"; }
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     });
+    await clickNav(page, "Save Asset");
     await new Promise(r => setTimeout(r, 400));
     let idbAssets = await page.evaluate(() => {
       return new Promise((resolve) => {
@@ -412,7 +432,7 @@ async function runChromeAcceptanceSuite() {
     check(
       foundEqAsset && foundEqAsset.type === "Equity" && foundEqAsset.geography === "India" && foundEqAsset.amount === 300000,
       "WP17-B02",
-      "Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB (finboom_db)"
+      "Add Asset 2-step modal wizard creates asset in real Chrome IndexedDB via real UI (finboom_db)"
     );
 
     // WP17-B03: Asset metadata persists in Chrome IndexedDB after reload
@@ -436,15 +456,27 @@ async function runChromeAcceptanceSuite() {
       "Asset metadata (type, geography, currency) persists in Chrome IndexedDB after reload"
     );
 
-    // WP17-B04: Liabilities tab renders and Add Liability 2-step wizard creates liability in IndexedDB
+    // WP17-B04: Liabilities tab renders and Add Liability 2-step wizard creates liability via real UI
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Liabilities");
+    await clickNav(page, "Add Liability");
+    await clickNav(page, "Home Loan");
     await page.evaluate(() => {
-      window.useCanonicalLedger.getState().addLiabilityWithMetadata({
-        name: "WP17 Chrome Home Loan",
-        amount: 100000,
-        type: "Home Loan",
-        currency: "INR"
-      });
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const nameInput = inputs.find(i => i.placeholder && i.placeholder.includes("HDFC Mortgage"));
+      const amountInput = inputs.find(i => i.placeholder === "0.00");
+      if (nameInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(nameInput, "WP17 Chrome Home Loan"); } else { nameInput.value = "WP17 Chrome Home Loan"; }
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (amountInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(amountInput, "100000"); } else { amountInput.value = "100000"; }
+        amountInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
+    await clickNav(page, "Save Liability");
     await new Promise(r => setTimeout(r, 400));
     let idbLiabs = await page.evaluate(() => {
       return new Promise((resolve) => {
@@ -459,9 +491,9 @@ async function runChromeAcceptanceSuite() {
     });
     const foundHomeLoan = (idbLiabs as any[]).find(l => l.name === "WP17 Chrome Home Loan");
     check(
-      foundHomeLoan && foundHomeLoan.type === "Home Loan" && foundHomeLoan.amount === 100000,
+      foundHomeLoan && foundHomeLoan.type === "Home Loan" && foundHomeLoan.amount === 100000 && foundHomeLoan.currency === "INR",
       "WP17-B04",
-      "Liabilities tab renders and Add Liability 2-step wizard creates liability in IndexedDB"
+      "Liabilities tab renders and Add Liability 2-step wizard creates liability via real UI"
     );
 
     // WP17-B05: Liability metadata persists in Chrome IndexedDB after reload
@@ -485,23 +517,69 @@ async function runChromeAcceptanceSuite() {
       "Liability metadata (loan type, currency) persists in Chrome IndexedDB after reload"
     );
 
-    // WP17-B06: Net Worth history tab renders historical snapshots from IndexedDB
-    const snapStatsBefore = await getLedgerStatsFromPage(page);
+    // WP17-B06: Net Worth history tab renders historical snapshots in DOM via real UI
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Net Worth");
+    await clickNav(page, "Take New Snapshot");
+    await page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const labelInput = inputs.find(i => i.placeholder && i.placeholder.includes("Regular March audit"));
+      if (labelInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(labelInput, "WP17 Chrome NetWorth Audit"); } else { labelInput.value = "WP17 Chrome NetWorth Audit"; }
+        labelInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    await clickNav(page, "Take Snapshot");
+    await new Promise(r => setTimeout(r, 400));
+    const historyDomCheck = await page.evaluate(() => {
+      const text = document.body.innerText;
+      const rows = document.querySelectorAll("tbody tr");
+      const hasLabel = text.includes("WP17 Chrome NetWorth Audit");
+      const hasNetWorth = text.includes("2,00,000") || text.includes("200,000") || text.includes("200000");
+      return {
+        rowsCount: rows.length,
+        hasLabel,
+        hasNetWorth
+      };
+    });
     check(
-      snapStatsBefore.snapshots >= 0,
+      historyDomCheck.rowsCount >= 1 && historyDomCheck.hasLabel && historyDomCheck.hasNetWorth,
       "WP17-B06",
-      "Net Worth history tab renders historical snapshots from IndexedDB"
+      "Net Worth history tab renders historical snapshot in DOM (rows: " + historyDomCheck.rowsCount + ", label and Net Worth verified)"
     );
 
-    // WP17-B07: Add Past Entry modal records historical snapshot and persists across browser reload
+    // WP17-B07: Add Past Entry modal records historical snapshot and persists across browser reload via real UI
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Net Worth");
+    await clickNav(page, "Add Past Entry");
     await page.evaluate(() => {
-      window.useCanonicalLedger.getState().addPastSnapshot({
-        dateStr: "09-08-2025",
-        totalAssets: 300000,
-        totalLiabilities: 100000,
-        label: "Historical Chrome Audit"
-      });
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const dateInput = inputs.find(i => i.placeholder && i.placeholder.includes("09-08-2025"));
+      const numInputs = inputs.filter(i => i.type === "number");
+      const labelInput = inputs.find(i => i.placeholder && i.placeholder.includes("old spreadsheet"));
+      if (dateInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(dateInput, "09-08-2025"); } else { dateInput.value = "09-08-2025"; }
+        dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (numInputs[0]) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(numInputs[0], "300000"); } else { numInputs[0].value = "300000"; }
+        numInputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (numInputs[1]) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(numInputs[1], "100000"); } else { numInputs[1].value = "100000"; }
+        numInputs[1].dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (labelInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(labelInput, "Historical Chrome Audit"); } else { labelInput.value = "Historical Chrome Audit"; }
+        labelInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
+    await clickNav(page, "Add entry");
     await new Promise(r => setTimeout(r, 400));
     let idbSnaps = await page.evaluate(() => {
       return new Promise((resolve) => {
@@ -518,13 +596,23 @@ async function runChromeAcceptanceSuite() {
     check(
       foundPastSnap && foundPastSnap.netWorth === 200000 && foundPastSnap.label === "Historical Chrome Audit",
       "WP17-B07",
-      "Add Past Entry modal records historical snapshot and persists across browser reload"
+      "Add Past Entry modal records historical snapshot via real UI and persists across browser reload"
     );
 
-    // WP17-B08: Take Snapshot modal captures current net worth with label and persists in IndexedDB
+    // WP17-B08: Take Snapshot modal captures current net worth with label via real UI and persists in IndexedDB
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Net Worth");
+    await clickNav(page, "Take New Snapshot");
     await page.evaluate(() => {
-      window.useCanonicalLedger.getState().captureSnapshot("Chrome Current Snapshot");
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const labelInput = inputs.find(i => i.placeholder && i.placeholder.includes("Regular March audit"));
+      if (labelInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(labelInput, "Chrome Current Snapshot"); } else { labelInput.value = "Chrome Current Snapshot"; }
+        labelInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     });
+    await clickNav(page, "Take Snapshot");
     await new Promise(r => setTimeout(r, 400));
     idbSnaps = await page.evaluate(() => {
       return new Promise((resolve) => {
@@ -538,10 +626,13 @@ async function runChromeAcceptanceSuite() {
       });
     });
     const foundCurrentSnap = (idbSnaps as any[]).find(s => s.label === "Chrome Current Snapshot");
+    const netWorthDomHasCurrent = await page.evaluate(() => {
+      return document.body.innerText.includes("Chrome Current Snapshot");
+    });
     check(
-      foundCurrentSnap !== undefined,
+      foundCurrentSnap !== undefined && netWorthDomHasCurrent,
       "WP17-B08",
-      "Take Snapshot modal captures current net worth with label and persists in IndexedDB"
+      "Take Snapshot modal captures current net worth with label via real UI and persists in IndexedDB (verified in DOM)"
     );
 
     // WP17-B09: Allocation tab renders actual asset breakdown and geography without fabricated targets
@@ -575,37 +666,113 @@ async function runChromeAcceptanceSuite() {
       "Clear Dev Data removes all WP-17 assets, liabilities, and snapshots from real Chrome IndexedDB"
     );
 
-    // WP17-B12: Browser process restart preserves legitimate user asset/liability/snapshot metadata
+    // WP17-B12: Browser process restart preserves legitimate user asset metadata via real UI
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Assets");
+    await clickNav(page, "Add Asset");
+    await clickNav(page, "Real Estate");
     await page.evaluate(() => {
-      window.useCanonicalLedger.getState().addAssetWithMetadata({
-        name: "Persistent Restart Asset",
-        amount: 500000,
-        type: "Real Estate",
-        geography: "India"
+      const inputs = Array.from(document.querySelectorAll("input"));
+      const nameInput = inputs.find(i => i.placeholder && i.placeholder.includes("HDFC Savings"));
+      const amountInput = inputs.find(i => i.placeholder === "0.00");
+      const select = document.querySelector("select");
+      if (nameInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(nameInput, "Persistent Restart Asset"); } else { nameInput.value = "Persistent Restart Asset"; }
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (amountInput) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(amountInput, "500000"); } else { amountInput.value = "500000"; }
+        amountInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if (select) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value");
+        if (desc && desc.set) { desc.set.call(select, "India"); } else { select.value = "India"; }
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    await clickNav(page, "Save Asset");
+    await new Promise(r => setTimeout(r, 400));
+    let idbAssetsRestart = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("assets", "readonly");
+          const getReq = tx.objectStore("assets").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
       });
     });
-    await new Promise(r => setTimeout(r, 400));
+    let restartAsset = (idbAssetsRestart as any[]).find(a => a.name === "Persistent Restart Asset");
+    const step5Pass = restartAsset && restartAsset.amount === 500000 && restartAsset.type === "Real Estate";
+
     await page.reload({ waitUntil: "domcontentloaded" });
-    const restartStats = await getLedgerStatsFromPage(page);
+    await new Promise(r => setTimeout(r, 400));
+    idbAssetsRestart = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("assets", "readonly");
+          const getReq = tx.objectStore("assets").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    restartAsset = (idbAssetsRestart as any[]).find(a => a.name === "Persistent Restart Asset");
+    const step7Pass = restartAsset && restartAsset.amount === 500000;
+
+    await browser.close();
+    console.log("\n  [WP-17 Phase A Lifecycle]: Relaunching Chromium process to test WP17-B12 persistence across restart...");
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox", `--user-data-dir=${PROFILE_DIR}`],
+      env: { ...process.env, LD_LIBRARY_PATH: `/home/user/.local/lib:${process.env.LD_LIBRARY_PATH || ""}` }
+    });
+    page = await browser.newPage();
+    await page.goto(BASE_URL, { waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 600));
+
+    idbAssetsRestart = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("assets", "readonly");
+          const getReq = tx.objectStore("assets").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    restartAsset = (idbAssetsRestart as any[]).find(a => a.name === "Persistent Restart Asset");
+    const step9Pass = restartAsset && restartAsset.amount === 500000;
+
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Assets");
+    await new Promise(r => setTimeout(r, 400));
+    const domHasRestartAsset = await page.evaluate(() => {
+      return document.body.innerText.includes("Persistent Restart Asset");
+    });
     check(
-      restartStats.assets === 1,
+      step5Pass && step7Pass && step9Pass && domHasRestartAsset,
       "WP17-B12",
-      "Browser process restart preserves legitimate user asset/liability/snapshot metadata"
+      "Browser process restart preserves legitimate user asset metadata (verified via real UI & IndexedDB)"
     );
 
   } finally {
     await browser.close();
     if (serverProc) {
-      serverProc.kill('SIGTERM');
+      serverProc.kill("SIGTERM");
     }
     if (fs.existsSync(PROFILE_DIR)) {
       fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
     }
   }
 
-  console.log('\n──────────────────────────────────────────────────────────────────────────');
+  console.log("\n──────────────────────────────────────────────────────────────────────────");
   console.log(`CHROME REAL INDEXEDDB ACCEPTANCE SUITE (WP-15) SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
-  console.log('──────────────────────────────────────────────────────────────────────────\n');
+  console.log("──────────────────────────────────────────────────────────────────────────\n");
 
   if (failCount > 0) {
     process.exit(1);
@@ -613,9 +780,10 @@ async function runChromeAcceptanceSuite() {
 }
 
 runChromeAcceptanceSuite().catch(err => {
-  console.error('Fatal Chrome acceptance test error:', err);
+  console.error("Fatal Chrome acceptance test error:", err);
   if (serverProc) {
-    serverProc.kill('SIGTERM');
+    serverProc.kill("SIGTERM");
   }
   process.exit(1);
 });
+
