@@ -1,7 +1,7 @@
 import { repository } from '../repositories';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { ImportPipelineService } from '../services/ImportPipelineService';
-import { Transaction, APP_AS_OF_DATE } from '../domain/types';
+import { Transaction, APP_AS_OF_DATE, AssetType, LiabilityType, GeographyType, NetWorthSnapshot } from '../domain/types';
 import { formatDisplayDate } from '../services/DateRangeService';
 
 const SAMPLE_DEFAULT_CSV = `Date,Title,Narration,Amount,Type,Account
@@ -84,8 +84,57 @@ export class FinancialCommands {
     repository.liabilities.add({ name, amount });
   }
 
-  static createSnapshot(): void {
-    repository.snapshots.create();
+  static recordAssetWithMetadata(params: { name: string; amount: number; type?: AssetType; tag?: string; currency?: string; geography?: GeographyType }): void {
+    repository.assets.add(params);
+  }
+
+  static recordLiabilityWithMetadata(params: { name: string; amount: number; type?: LiabilityType; currency?: string }): void {
+    repository.liabilities.add(params);
+  }
+
+  static addPastSnapshot(params: { dateStr: string; totalAssets: number; totalLiabilities: number; label?: string }): void {
+    const { dateStr, totalAssets, totalLiabilities, label } = params;
+    // Future date validation against APP_AS_OF_DATE
+    const parts = dateStr.split("-");
+    let targetDate = new Date(dateStr);
+    if (parts.length === 3 && parts[0].length === 2) {
+      // DD-MM-YYYY
+      targetDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    }
+    const today = new Date(APP_AS_OF_DATE);
+    if (!isNaN(targetDate.getTime()) && targetDate > today) {
+      throw new Error("Cannot record a net worth snapshot for a future date.");
+    }
+    const netWorth = totalAssets - totalLiabilities;
+    const snap: NetWorthSnapshot = {
+      id: "snap-past-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+      dateStr,
+      totalAssets,
+      totalLiabilities,
+      netWorth,
+      status: "Anchored Permanent",
+      label
+    };
+    repository.snapshots.create(snap);
+  }
+
+  static createSnapshot(label?: string): void {
+    if (label) {
+      const totalAssets = repository.assets.findAllSync().reduce((sum, a) => sum + a.amount, 0);
+      const totalLiabilities = repository.liabilities.findAllSync().reduce((sum, l) => sum + l.amount, 0);
+      const netWorth = totalAssets - totalLiabilities;
+      repository.snapshots.create({
+        id: "snap-" + Date.now(),
+        dateStr: formatDisplayDate(APP_AS_OF_DATE) + " (Today)",
+        totalAssets,
+        totalLiabilities,
+        netWorth,
+        status: "Anchored Permanent",
+        label
+      });
+    } else {
+      repository.snapshots.create();
+    }
   }
 
   static importStatement(
