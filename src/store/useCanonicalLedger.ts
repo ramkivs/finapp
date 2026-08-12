@@ -260,5 +260,8 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
 
 // Initialize storage automatically in browser
 if (typeof window !== 'undefined') {
-  useCanonicalLedger.getState().initialize();
+  (window as any).useCanonicalLedger = useCanonicalLedger;
+  setTimeout(() => {
+    useCanonicalLedger.getState().initialize();
+  }, 0);
 }

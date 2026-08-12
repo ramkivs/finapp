@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { NetWorthSnapshot } from '../../domain/types';
 import { TakeSnapshotModal } from './TakeSnapshotModal';
 import { AddPastEntryModal } from './AddPastEntryModal';
-import { EmptyState } from '../common/EmptyState';
 import { CurrencyValue } from '../CurrencyValue';
 import { Camera, Calendar, TrendingUp } from 'lucide-react';
 
@@ -51,13 +50,20 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
       </div>
 
       {snapshots.length === 0 ? (
-        <EmptyState
-          title="No net worth snapshots recorded"
-          description="Capture your first snapshot or record historical past entries to anchor your authoritative compound growth rate."
-          actionLabel="Take New Snapshot"
-          onAction={() => setTakeModalOpen(true)}
-        />
-      ) : (
+  <div className="border rounded-xl p-8 text-center">
+    <div className="text-sm font-semibold">No net worth snapshots recorded</div>
+    <div className="text-xs text-gray-500 mt-2">
+      Capture your first snapshot to begin tracking net worth history.
+    </div>
+    <button
+      type="button"
+      onClick={() => setTakeModalOpen(true)}
+      className="mt-4 px-4 py-2 rounded-lg border text-sm"
+    >
+      Take New Snapshot
+    </button>
+  </div>
+) : (
         <div className="bg-[#0D1824] border border-[#233548] rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

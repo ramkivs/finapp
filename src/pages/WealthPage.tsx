@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { CurrencyValue } from '../components/CurrencyValue';
-import { KpiCard } from '../components/dashboard/KpiCard';
-import { ChartCard } from '../components/dashboard/ChartCard';
-import { EmptyState } from '../components/common/EmptyState';
 import { AssetsWorkspace } from '../components/wealth/AssetsWorkspace';
 import { LiabilitiesWorkspace } from '../components/wealth/LiabilitiesWorkspace';
 import { NetWorthWorkspace } from '../components/wealth/NetWorthWorkspace';
@@ -35,6 +32,7 @@ export const WealthPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Dividend Cash Flow Dashboard</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           "Do you know how much dividend you receive in a year? Do you know the actual cash flow you're generating?"
+        </p>
         <h1 className="text-2xl md:text-3xl font-extrabold text-[#F5F8FC] tracking-tight">
           Wealth & Institutional Portfolio Command
         </h1>
@@ -162,11 +160,16 @@ export const WealthPage: React.FC = () => {
       {subTab === 'allocation' && <AllocationWorkspace assets={assets} />}
 
       {/* Dividend histogram chart */}
-      {transactions.length > 0 && (
-        <ChartCard
-          title="Month-by-Month Reconciled 12M Dividend Cash Flow"
-          subtitle="Reconciled ledger cash flow across trailing 12 months"
-        >
+     {transactions.length > 0 && (
+  <div className="border rounded-xl p-6">
+    <div className="mb-6">
+      <h3 className="text-base font-bold">
+        Month-by-Month Reconciled 12M Dividend Cash Flow
+      </h3>
+      <p className="text-xs text-gray-500 mt-1">
+        Reconciled ledger cash flow across trailing 12 months
+      </p>
+    </div>
           <div className="h-[240px] flex items-end gap-3 pb-4 border-b border-[#233548] mt-4">
             {buckets.map((b) => {
               const heightPct = Math.round((b.amount / maxAmt) * 100);
@@ -192,8 +195,8 @@ export const WealthPage: React.FC = () => {
               <span key={b.month}>{b.month}</span>
             ))}
           </div>
-        </ChartCard>
-      )}
+       </div>
+)}
     </div>
   );
 };

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Asset, AssetType, GeographyType } from '../../domain/types';
 import { AssetTable } from './AssetTable';
 import { AddAssetModal } from './AddAssetModal';
-import { EmptyState } from '../common/EmptyState';
 import { CurrencyValue } from '../CurrencyValue';
 import { Plus, Search, Filter } from 'lucide-react';
 
@@ -89,14 +88,21 @@ export const AssetsWorkspace: React.FC<Props> = ({ assets }) => {
         </div>
       </div>
 
-      {assets.length === 0 ? (
-        <EmptyState
-          title="No institutional assets added"
-          description="Register your brokerage accounts, mutual funds, physical properties, and cash savings to build your authoritative wealth inventory."
-          actionLabel="+ Add Asset"
-          onAction={() => setModalOpen(true)}
-        />
-      ) : filtered.length === 0 ? (
+    {assets.length === 0 ? (
+  <div className="border rounded-xl p-8 text-center">
+    <div className="text-sm font-semibold">No assets added</div>
+    <div className="text-xs text-gray-500 mt-2">
+      Add an asset to build your wealth inventory.
+    </div>
+    <button
+      type="button"
+      onClick={() => setModalOpen(true)}
+      className="mt-4 px-4 py-2 rounded-lg border text-sm"
+    >
+      + Add Asset
+    </button>
+  </div>
+) : filtered.length === 0 ? (
         <div className="bg-[#0D1824] border border-[#233548] rounded-2xl p-12 text-center text-xs text-[#94A3B8]">
           No assets match your selected category or search filter.
         </div>

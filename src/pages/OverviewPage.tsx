@@ -117,7 +117,7 @@ export const OverviewPage: React.FC = () => {
             </p>
           </div>
           <button
-            onClick={captureSnapshot}
+            onClick={() => captureSnapshot()}
             className="w-full py-3 px-5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition"
           >
             <Camera size={17} />

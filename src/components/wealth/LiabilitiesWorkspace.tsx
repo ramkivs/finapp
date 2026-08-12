@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Liability, LiabilityType } from '../../domain/types';
 import { LiabilityTable } from './LiabilityTable';
 import { AddLiabilityModal } from './AddLiabilityModal';
-import { EmptyState } from '../common/EmptyState';
 import { CurrencyValue } from '../CurrencyValue';
 import { Plus } from 'lucide-react';
 
@@ -40,14 +39,21 @@ export const LiabilitiesWorkspace: React.FC<Props> = ({ liabilities }) => {
         </div>
       </div>
 
-      {liabilities.length === 0 ? (
-        <EmptyState
-          title="No active liabilities recorded"
-          description="Add your mortgages, vehicle loans, credit cards, and personal loans to calculate your accurate net worth."
-          actionLabel="+ Add Liability"
-          onAction={() => setModalOpen(true)}
-        />
-      ) : (
+ {liabilities.length === 0 ? (
+  <div className="border rounded-xl p-8 text-center">
+    <div className="text-sm font-semibold">No liabilities recorded</div>
+    <div className="text-xs text-gray-500 mt-2">
+      Add a liability to calculate your net worth.
+    </div>
+    <button
+      type="button"
+      onClick={() => setModalOpen(true)}
+      className="mt-4 px-4 py-2 rounded-lg border text-sm"
+    >
+      + Add Liability
+    </button>
+  </div>
+) : (
         <LiabilityTable liabilities={liabilities} />
       )}
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Asset } from '../../domain/types';
 import { CurrencyValue } from '../CurrencyValue';
-import { EmptyState } from '../common/EmptyState';
 import { queries } from '../../application';
 import { PieChart, Globe, Repeat } from 'lucide-react';
 
@@ -64,12 +63,14 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
         ))}
       </div>
 
-      {assets.length === 0 ? (
-        <EmptyState
-          title="No institutional assets recorded"
-          description="Add your assets to inspect actual asset class allocation, geography exposure, and systematic investment progress."
-        />
-      ) : allocTab === 'class' ? (
+ {assets.length === 0 ? (
+  <div className="border rounded-xl p-8 text-center">
+    <div className="text-sm font-semibold">No assets recorded</div>
+    <div className="text-xs text-gray-500 mt-2">
+      Add assets to inspect asset allocation and geography exposure.
+    </div>
+  </div>
+) : allocTab === 'class' ? (
         <div className="space-y-6">
           <div className="bg-[#0D1824] border border-[#233548] p-6 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between mb-4">
