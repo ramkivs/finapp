@@ -108,8 +108,8 @@ export const WealthPage: React.FC = () => {
           <div className="mt-2">
             <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold">
               {cagrMetric.status === 'NOT_CONFIGURED'
-                ? '1Y CAGR (Snapshots req.)'
-                : (cagrMetric.value > 0 ? `↑ +${cagrMetric.value}% 1Y CAGR` : `${cagrMetric.value}% 1Y CAGR`)}
+                ? 'CAGR (Snapshots req.)'
+                : (cagrMetric.value > 0 ? `↑ +${cagrMetric.value}% Annualized CAGR` : `${cagrMetric.value}% Annualized CAGR`)}
             </span>
           </div>
         </div>

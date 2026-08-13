@@ -36,9 +36,9 @@ export const demoSnapshots: NetWorthSnapshot[] = [
     dateStr: formatDisplayDate(APP_AS_OF_DATE) + ' (Today)',
     totalAssets: 482910 + 3640000 + 4982500,
     totalLiabilities: 1850000,
-    netWorth: (482910 + 3640000 + 4982500) - 1850000, // 7,255,410
+    netWorth: (482910 + 3640000 + 4982500) - 1850000,
     status: 'Active Preview'
   },
   { id: 'snap-1', dateStr: '01 Jul 2026', totalAssets: 9060000, totalLiabilities: 1880000, netWorth: 7180000, status: 'Anchored' },
-  { id: 'snap-hist-1y', dateStr: '09 Aug 2025', totalAssets: 7696422, totalLiabilities: 1850000, netWorth: 5846422, status: 'Anchored' }
+  { id: 'snap-2', dateStr: '01 Jun 2026', totalAssets: 8950000, totalLiabilities: 1910000, netWorth: 7040000, status: 'Anchored' }
 ];

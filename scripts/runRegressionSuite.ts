@@ -302,8 +302,8 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
   const demoYield = queries.getMetric('DIVIDEND_YIELD_TTM');
   const demoCagr = queries.getMetric('NET_WORTH_CAGR');
   assert(
-    demoYield.value === 4.07 && demoCagr.value === 24.1 && demoYield.status === 'RECONCILED',
-    'Load Demo Data causes dashboard values to derive from canonical runtime (4.07% yield, +24.1% CAGR)',
+    demoYield.value === 4.07 && demoCagr.value === 17.3 && demoYield.status === 'RECONCILED' && demoCagr.status === 'RECONCILED',
+    'Load Demo Data causes dashboard values to derive dynamically from canonical runtime (4.07% yield, +17.3% Annualized CAGR)',
     'TEST-28'
   );
 
@@ -379,8 +379,8 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
   );
   await repository.loadDemoData();
   assert(
-    queries.getMetric('DIVIDEND_YIELD_TTM').value === 4.07 && queries.getMetric('NET_WORTH_CAGR').value === 24.1,
-    'Load Demo Data renders canonical-derived dashboard values (4.07% yield, +24.1% CAGR)',
+    queries.getMetric('DIVIDEND_YIELD_TTM').value === 4.07 && queries.getMetric('NET_WORTH_CAGR').value === 17.3,
+    'Load Demo Data renders canonical-derived dashboard values (4.07% yield, +17.3% Annualized CAGR)',
     'TEST-39'
   );
   await repository.clearLocalData();
@@ -983,14 +983,15 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP17-C31'
   );
 
-  // C32 — Valid multi-snapshot positive net-worth history calculates CAGR from actual snapshot dates
-  const cagr32 = WealthIntelligenceService.calculateNetWorthCAGR([
-    { id: '1', dateStr: '09 Aug 2025', totalAssets: 7696422, totalLiabilities: 1850000, netWorth: 5846422, status: 'Anchored' },
-    { id: '2', dateStr: '09 Aug 2026', totalAssets: 8905410, totalLiabilities: 1650000, netWorth: 7255410, status: 'Anchored' }
-  ]);
+  // C32 — Valid multi-snapshot positive net-worth history calculates CAGR from dedicated test fixture snapshot dates
+  const testFixtureSnapshots: NetWorthSnapshot[] = [
+    { id: 't1', dateStr: '09 Aug 2025', totalAssets: 7696422, totalLiabilities: 1850000, netWorth: 5846422, status: 'Anchored' },
+    { id: 't2', dateStr: '09 Aug 2026', totalAssets: 8905410, totalLiabilities: 1650000, netWorth: 7255410, status: 'Anchored' }
+  ];
+  const cagr32 = WealthIntelligenceService.calculateNetWorthCAGR(testFixtureSnapshots);
   assert(
     cagr32.status === 'RECONCILED' && cagr32.value === 24.1,
-    'Valid multi-snapshot history calculates CAGR dynamically from actual snapshot dates (+24.1%)',
+    'Valid multi-snapshot history dynamically calculates CAGR (+24.1%) from dedicated test fixture dates without mutating production fixtures',
     'WP17-C32'
   );
 

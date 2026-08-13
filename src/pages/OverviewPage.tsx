@@ -58,7 +58,7 @@ export const OverviewPage: React.FC = () => {
             <CurrencyValue value={nwMetric.value} />
           </div>
           <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-1 flex items-center justify-end gap-1">
-            <span>{cagrMetric.status === 'NOT_CONFIGURED' || cagrMetric.value === 0 ? '1Y CAGR (Snapshots req.)' : `↑ +${cagrMetric.value}% 1Y CAGR`}</span>
+            <span>{cagrMetric.status === 'NOT_CONFIGURED' ? 'CAGR (Snapshots req.)' : (cagrMetric.value > 0 ? `↑ +${cagrMetric.value}% Annualized CAGR` : `${cagrMetric.value}% Annualized CAGR`)}</span>
           </div>
         </div>
       </div>
