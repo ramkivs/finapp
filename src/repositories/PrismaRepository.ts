@@ -1,7 +1,8 @@
 import {
   Transaction, Asset, Liability, NetWorthSnapshot,
   TransactionQuery, TransactionRepository, AssetRepository,
-  LiabilityRepository, SnapshotRepository, FinancialRepositoryPort
+  LiabilityRepository, SnapshotRepository, FinancialRepositoryPort,
+  Account, AccountRepository, MonthlyBudget, BudgetRepository
 } from '../domain/types';
 
 /**
@@ -80,11 +81,46 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
   }
 }
 
+export class PrismaAccountRepository implements AccountRepository {
+  async findAll(): Promise<Account[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Account[] {
+    return [];
+  }
+
+  async add(_account: Account): Promise<void> {}
+  async remove(_id: string): Promise<void> {}
+}
+
+export class PrismaBudgetRepository implements BudgetRepository {
+  async findForMonth(_monthStr: string): Promise<MonthlyBudget | null> {
+    return this.findForMonthSync(_monthStr);
+  }
+
+  findForMonthSync(_monthStr: string): MonthlyBudget | null {
+    return null;
+  }
+
+  async findAll(): Promise<MonthlyBudget[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): MonthlyBudget[] {
+    return [];
+  }
+
+  async save(_budget: MonthlyBudget): Promise<void> {}
+}
+
 export class PrismaRepository implements FinancialRepositoryPort {
   public transactions = new PrismaTransactionRepository();
   public assets = new PrismaAssetRepository();
   public liabilities = new PrismaLiabilityRepository();
   public snapshots = new PrismaSnapshotRepository();
+  public accounts = new PrismaAccountRepository();
+  public budgets = new PrismaBudgetRepository();
 
   async clearLocalData(): Promise<void> {
     // Production implementation: await prisma.transaction.deleteMany(); etc.

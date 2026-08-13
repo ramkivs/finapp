@@ -1,56 +1,48 @@
 import {
-  FinancialRepositoryPort,
   Transaction,
-  Asset,
-  Liability,
-  NetWorthSnapshot,
-  APP_AS_OF_DATE,
   TransactionQuery,
   TransactionRepository,
+  Asset,
   AssetRepository,
+  Liability,
   LiabilityRepository,
-  SnapshotRepository
+  NetWorthSnapshot,
+  SnapshotRepository,
+  Account,
+  AccountRepository,
+  MonthlyBudget,
+  BudgetRepository,
+  FinancialRepositoryPort,
+  APP_AS_OF_DATE
 } from '../domain/types';
-import { useCanonicalLedger } from '../store/useCanonicalLedger';
-import { IndexedDBStorageService } from '../services/IndexedDBStorageService';
-import { demoTransactions, demoAssets, demoLiabilities, demoSnapshots } from '../domain/demoFixtures';
 import { DateRangeService, formatDisplayDate } from '../services/DateRangeService';
+import { Sha256Service } from '../services/Sha256Service';
+import { IndexedDBStorageService } from '../services/IndexedDBStorageService';
+import { useCanonicalLedger } from '../store/useCanonicalLedger';
+import { demoTransactions, demoAssets, demoLiabilities, demoSnapshots } from '../domain/demoFixtures';
 
-function hashTx(tx: { account: string; date: string; amount: number; narration: string }): string {
-  const str = `${tx.account}|${tx.date}|${tx.amount}|${tx.narration.toLowerCase().trim()}`;
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return 'fp-' + Math.abs(hash).toString(36);
+function generateFingerprint(tx: { account: string; date: string; amount: number; narration: string }): string {
+  const canonicalString = `${tx.account}|${tx.date}|${tx.amount}|${tx.narration.toLowerCase().trim()}`;
+  return Sha256Service.hash(canonicalString);
 }
 
 export class MemoryTransactionRepository implements TransactionRepository {
-  constructor(private root: MemoryRepository) {}
+  constructor(private parent: MemoryRepository) {}
 
   async findMany(query: TransactionQuery): Promise<Transaction[]> {
     return this.findManySync(query);
   }
 
   findManySync(query: TransactionQuery): Transaction[] {
-    const all = this.root.transactionsData;
-    const type = query.type ?? 'All';
-    const range = query.dateRange ?? 'This Month';
-    const search = query.search ?? '';
-    const start = query.customStart ?? undefined;
-    const end = query.customEnd ?? undefined;
-    const asOf = query.asOfDateStr ?? APP_AS_OF_DATE;
+    const { type, dateRange, search, customStart, customEnd, asOfDateStr = APP_AS_OF_DATE } = query;
+    const bounds = DateRangeService.getBounds(dateRange || 'This Month', asOfDateStr, customStart, customEnd);
 
-    const bounds = DateRangeService.getBounds(range, asOf, start, end);
-
-    return all.filter(tx => {
-      if (type !== 'All' && tx.type !== type && tx.type.toUpperCase() !== type) return false;
-      if (tx.date < bounds.startDate || tx.date > bounds.endDate) return false;
+    return this.parent.transactionsData.filter(item => {
+      if (type && type !== 'All' && item.type !== type && item.type.toUpperCase() !== type) return false;
+      if (item.date < bounds.startDate || item.date > bounds.endDate) return false;
       if (search) {
-        const text = `${tx.title} ${tx.narration} ${tx.account} ${tx.category} ${tx.notes || ''}`.toLowerCase();
-        if (!text.includes(search.toLowerCase())) return false;
+        const content = `${item.title} ${item.narration} ${item.account} ${item.category} ${item.notes || ''}`.toLowerCase();
+        if (!content.includes(search.toLowerCase())) return false;
       }
       return true;
     });
@@ -61,195 +53,244 @@ export class MemoryTransactionRepository implements TransactionRepository {
   }
 
   findAllSync(): Transaction[] {
-    return [...this.root.transactionsData];
+    return [...this.parent.transactionsData];
   }
 
-  async append(tx: Transaction): Promise<void> {
-    const prev = this.root.transactionsData;
-    const fp = tx.fingerprint || hashTx(tx);
-    const updated = { ...tx, fingerprint: fp };
-    const next = [...prev, updated];
-
-    this.root.transactionsData = next;
-    this.root.syncStore();
-
-    try {
-      await IndexedDBStorageService.saveAll({
-        transactions: next,
-        assets: this.root.assetsData,
-        liabilities: this.root.liabilitiesData,
-        snapshots: this.root.snapshotsData
-      });
-    } catch (err) {
-      this.root.transactionsData = prev;
-      this.root.syncStore();
-      throw err;
-    }
+  async append(transaction: Transaction): Promise<void> {
+    const fp = transaction.fingerprint || generateFingerprint(transaction);
+    const withFp = { ...transaction, fingerprint: fp };
+    this.parent.transactionsData = [withFp, ...this.parent.transactionsData];
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
   }
 
-  async appendMany(txs: Transaction[]): Promise<void> {
-    const prev = this.root.transactionsData;
-    const seen = new Set(prev.map(t => t.fingerprint || hashTx(t)));
-    const toAppend: Transaction[] = [];
+  async appendMany(transactions: Transaction[]): Promise<void> {
+    const seen = new Set(this.parent.transactionsData.map(t => t.fingerprint || generateFingerprint(t)));
+    const unique: Transaction[] = [];
 
-    for (const tx of txs) {
-      const fp = tx.fingerprint || hashTx(tx);
-      if (seen.has(fp)) continue;
-      seen.add(fp);
-      toAppend.push({ ...tx, fingerprint: fp });
+    for (const t of transactions) {
+      const fp = t.fingerprint || generateFingerprint(t);
+      if (!seen.has(fp)) {
+        seen.add(fp);
+        unique.push({ ...t, fingerprint: fp });
+      }
     }
 
-    if (toAppend.length === 0) return;
-
-    const next = [...prev, ...toAppend];
-    this.root.transactionsData = next;
-    this.root.syncStore();
-
-    try {
+    if (unique.length > 0) {
+      this.parent.transactionsData = [...unique, ...this.parent.transactionsData];
+      this.parent.syncStore();
       await IndexedDBStorageService.saveAll({
-        transactions: next,
-        assets: this.root.assetsData,
-        liabilities: this.root.liabilitiesData,
-        snapshots: this.root.snapshotsData
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: this.parent.accountsData,
+        budgets: this.parent.budgetsData
       });
-    } catch (err) {
-      this.root.transactionsData = prev;
-      this.root.syncStore();
-      throw err;
     }
   }
 }
 
 export class MemoryAssetRepository implements AssetRepository {
-  constructor(private root: MemoryRepository) {}
+  constructor(private parent: MemoryRepository) {}
 
   async findAll(): Promise<Asset[]> {
     return this.findAllSync();
   }
 
   findAllSync(): Asset[] {
-    return [...this.root.assetsData];
+    return [...this.parent.assetsData];
   }
 
   async add(asset: Asset): Promise<void> {
-    const prev = this.root.assetsData;
-    const existingIdx = prev.findIndex(a => a.name === asset.name);
-    let next: Asset[];
-    if (existingIdx >= 0) {
-      next = [...prev];
-      next[existingIdx] = { ...next[existingIdx], ...asset };
+    const existingIndex = this.parent.assetsData.findIndex(a => a.name === asset.name);
+    if (existingIndex >= 0) {
+      this.parent.assetsData[existingIndex] = { ...asset };
     } else {
-      next = [...prev, asset];
+      this.parent.assetsData = [...this.parent.assetsData, { ...asset }];
     }
-
-    this.root.assetsData = next;
-    this.root.syncStore();
-
-    try {
-      await IndexedDBStorageService.saveAll({
-        transactions: this.root.transactionsData,
-        assets: next,
-        liabilities: this.root.liabilitiesData,
-        snapshots: this.root.snapshotsData
-      });
-    } catch (err) {
-      this.root.assetsData = prev;
-      this.root.syncStore();
-      throw err;
-    }
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
   }
 }
 
 export class MemoryLiabilityRepository implements LiabilityRepository {
-  constructor(private root: MemoryRepository) {}
+  constructor(private parent: MemoryRepository) {}
 
   async findAll(): Promise<Liability[]> {
     return this.findAllSync();
   }
 
   findAllSync(): Liability[] {
-    return [...this.root.liabilitiesData];
+    return [...this.parent.liabilitiesData];
   }
 
   async add(liability: Liability): Promise<void> {
-    const prev = this.root.liabilitiesData;
-    const existingIdx = prev.findIndex(l => l.name === liability.name);
-    let next: Liability[];
-    if (existingIdx >= 0) {
-      next = [...prev];
-      next[existingIdx] = { ...next[existingIdx], ...liability };
+    const existingIndex = this.parent.liabilitiesData.findIndex(l => l.name === liability.name);
+    if (existingIndex >= 0) {
+      this.parent.liabilitiesData[existingIndex] = { ...liability };
     } else {
-      next = [...prev, liability];
+      this.parent.liabilitiesData = [...this.parent.liabilitiesData, { ...liability }];
     }
-
-    this.root.liabilitiesData = next;
-    this.root.syncStore();
-
-    try {
-      await IndexedDBStorageService.saveAll({
-        transactions: this.root.transactionsData,
-        assets: this.root.assetsData,
-        liabilities: next,
-        snapshots: this.root.snapshotsData
-      });
-    } catch (err) {
-      this.root.liabilitiesData = prev;
-      this.root.syncStore();
-      throw err;
-    }
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
   }
 }
 
 export class MemorySnapshotRepository implements SnapshotRepository {
-  constructor(private root: MemoryRepository) {}
+  constructor(private parent: MemoryRepository) {}
 
   async findAll(): Promise<NetWorthSnapshot[]> {
     return this.findAllSync();
   }
 
   findAllSync(): NetWorthSnapshot[] {
-    return [...this.root.snapshotsData];
+    return [...this.parent.snapshotsData];
   }
 
   async create(snapshot?: NetWorthSnapshot): Promise<void> {
-    let snapToAdd = snapshot;
-    if (!snapToAdd) {
-      const totalAssets = this.root.assetsData.reduce((sum, a) => sum + a.amount, 0);
-      const totalLiabilities = this.root.liabilitiesData.reduce((sum, l) => sum + l.amount, 0);
-      const netWorth = totalAssets - totalLiabilities;
-      snapToAdd = {
+    if (snapshot) {
+      const existingIdx = this.parent.snapshotsData.findIndex(s => s.dateStr === snapshot.dateStr);
+      if (existingIdx >= 0) {
+        this.parent.snapshotsData[existingIdx] = { ...snapshot };
+      } else {
+        this.parent.snapshotsData = [snapshot, ...this.parent.snapshotsData];
+      }
+    } else {
+      const totAssets = this.parent.assetsData.reduce((sum, a) => sum + a.amount, 0);
+      const totLiabs = this.parent.liabilitiesData.reduce((sum, l) => sum + l.amount, 0);
+      const netWorth = totAssets - totLiabs;
+
+      const newSnap: NetWorthSnapshot = {
         id: 'snap-' + Date.now(),
         dateStr: formatDisplayDate(APP_AS_OF_DATE) + ' (Today)',
-        totalAssets,
-        totalLiabilities,
+        totalAssets: totAssets,
+        totalLiabilities: totLiabs,
         netWorth,
         status: 'Anchored Permanent'
       };
+      this.parent.snapshotsData = [newSnap, ...this.parent.snapshotsData];
     }
-    const prevSnaps = this.root.snapshotsData;
-    const existingIdx = prevSnaps.findIndex(s => s.dateStr.trim().toLowerCase() === snapToAdd!.dateStr.trim().toLowerCase());
-    let nextSnaps: NetWorthSnapshot[];
-    if (existingIdx >= 0) {
-      nextSnaps = [...prevSnaps];
-      nextSnaps[existingIdx] = { ...nextSnaps[existingIdx], ...snapToAdd };
-    } else {
-      nextSnaps = [snapToAdd, ...prevSnaps];
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
+  }
+}
+
+export class MemoryAccountRepository implements AccountRepository {
+  constructor(private parent: MemoryRepository) {}
+
+  async findAll(): Promise<Account[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): Account[] {
+    return [...this.parent.accountsData];
+  }
+
+  async add(account: Account): Promise<void> {
+    // Enforce unique account name within Account registry
+    const duplicate = this.parent.accountsData.find(
+      a => a.name.trim().toLowerCase() === account.name.trim().toLowerCase() && a.id !== account.id
+    );
+    if (duplicate) {
+      throw new Error(`Account name "${account.name}" already exists. Account names must be unique.`);
     }
 
-    this.root.snapshotsData = nextSnaps;
-    this.root.syncStore();
-    try {
-      await IndexedDBStorageService.saveAll({
-        transactions: this.root.transactionsData,
-        assets: this.root.assetsData,
-        liabilities: this.root.liabilitiesData,
-        snapshots: nextSnaps
-      });
-    } catch (err) {
-      this.root.snapshotsData = prevSnaps;
-      this.root.syncStore();
-      throw err;
+    const existingIdx = this.parent.accountsData.findIndex(a => a.id === account.id);
+    if (existingIdx >= 0) {
+      this.parent.accountsData[existingIdx] = { ...account };
+    } else {
+      this.parent.accountsData = [...this.parent.accountsData, { ...account }];
     }
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    this.parent.accountsData = this.parent.accountsData.filter(a => a.id !== id);
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
+  }
+}
+
+export class MemoryBudgetRepository implements BudgetRepository {
+  constructor(private parent: MemoryRepository) {}
+
+  async findForMonth(monthStr: string): Promise<MonthlyBudget | null> {
+    return this.findForMonthSync(monthStr);
+  }
+
+  findForMonthSync(monthStr: string): MonthlyBudget | null {
+    const found = this.parent.budgetsData.find(b => b.monthStr === monthStr);
+    return found ? { ...found } : null;
+  }
+
+  async findAll(): Promise<MonthlyBudget[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): MonthlyBudget[] {
+    return [...this.parent.budgetsData];
+  }
+
+  async save(budget: MonthlyBudget): Promise<void> {
+    const existingIdx = this.parent.budgetsData.findIndex(b => b.monthStr === budget.monthStr);
+    if (existingIdx >= 0) {
+      this.parent.budgetsData[existingIdx] = { ...budget };
+    } else {
+      this.parent.budgetsData = [...this.parent.budgetsData, { ...budget }];
+    }
+    this.parent.syncStore();
+    await IndexedDBStorageService.saveAll({
+      transactions: this.parent.transactionsData,
+      assets: this.parent.assetsData,
+      liabilities: this.parent.liabilitiesData,
+      snapshots: this.parent.snapshotsData,
+      accounts: this.parent.accountsData,
+      budgets: this.parent.budgetsData
+    });
   }
 }
 
@@ -258,18 +299,24 @@ export class MemoryRepository implements FinancialRepositoryPort {
   public assetsData: Asset[] = [];
   public liabilitiesData: Liability[] = [];
   public snapshotsData: NetWorthSnapshot[] = [];
+  public accountsData: Account[] = [];
+  public budgetsData: MonthlyBudget[] = [];
 
   public transactions: TransactionRepository = new MemoryTransactionRepository(this);
   public assets: AssetRepository = new MemoryAssetRepository(this);
   public liabilities: LiabilityRepository = new MemoryLiabilityRepository(this);
   public snapshots: SnapshotRepository = new MemorySnapshotRepository(this);
+  public accounts: AccountRepository = new MemoryAccountRepository(this);
+  public budgets: BudgetRepository = new MemoryBudgetRepository(this);
 
   public syncStore() {
     useCanonicalLedger.getState().syncWithRepository({
       transactions: [...this.transactionsData],
       assets: [...this.assetsData],
       liabilities: [...this.liabilitiesData],
-      snapshots: [...this.snapshotsData]
+      snapshots: [...this.snapshotsData],
+      accounts: [...this.accountsData],
+      budgets: [...this.budgetsData]
     });
   }
 
@@ -279,6 +326,8 @@ export class MemoryRepository implements FinancialRepositoryPort {
     this.assetsData = data.assets;
     this.liabilitiesData = data.liabilities;
     this.snapshotsData = data.snapshots;
+    this.accountsData = data.accounts;
+    this.budgetsData = data.budgets;
     this.syncStore();
   }
 
@@ -287,12 +336,16 @@ export class MemoryRepository implements FinancialRepositoryPort {
     this.assetsData = [...demoAssets];
     this.liabilitiesData = [...demoLiabilities];
     this.snapshotsData = [...demoSnapshots];
+    this.accountsData = [];
+    this.budgetsData = [];
     this.syncStore();
     await IndexedDBStorageService.saveAll({
       transactions: this.transactionsData,
       assets: this.assetsData,
       liabilities: this.liabilitiesData,
-      snapshots: this.snapshotsData
+      snapshots: this.snapshotsData,
+      accounts: this.accountsData,
+      budgets: this.budgetsData
     });
   }
 
@@ -301,6 +354,8 @@ export class MemoryRepository implements FinancialRepositoryPort {
     this.assetsData = [];
     this.liabilitiesData = [];
     this.snapshotsData = [];
+    this.accountsData = [];
+    this.budgetsData = [];
     this.syncStore();
     await IndexedDBStorageService.clearAll();
   }
