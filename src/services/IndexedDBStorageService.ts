@@ -1,7 +1,17 @@
-import { Transaction, Asset, Liability, NetWorthSnapshot, Account, MonthlyBudget } from '../domain/types';
+import {
+  Transaction,
+  Asset,
+  Liability,
+  NetWorthSnapshot,
+  Account,
+  MonthlyBudget,
+  InsurancePolicy,
+  FinancialGoal,
+  FinancialProfile
+} from '../domain/types';
 
 const DB_NAME = 'finboom_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export interface StoredLedgerState {
   transactions: Transaction[];
@@ -10,6 +20,9 @@ export interface StoredLedgerState {
   snapshots: NetWorthSnapshot[];
   accounts: Account[];
   budgets: MonthlyBudget[];
+  policies: InsurancePolicy[];
+  goals: FinancialGoal[];
+  profile: FinancialProfile | null;
   hasLoadedOnce: boolean;
 }
 
@@ -21,6 +34,9 @@ export class IndexedDBStorageService {
     snapshots: [],
     accounts: [],
     budgets: [],
+    policies: [],
+    goals: [],
+    profile: null,
     hasLoadedOnce: false
   };
 
@@ -50,6 +66,9 @@ export class IndexedDBStorageService {
         if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('budgets')) db.createObjectStore('budgets', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('policies')) db.createObjectStore('policies', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('profile')) db.createObjectStore('profile', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
       };
     });
@@ -65,45 +84,62 @@ export class IndexedDBStorageService {
           snapshots: [...this.nodeFallbackStore.snapshots],
           accounts: [...this.nodeFallbackStore.accounts],
           budgets: [...this.nodeFallbackStore.budgets],
+          policies: [...this.nodeFallbackStore.policies],
+          goals: [...this.nodeFallbackStore.goals],
+          profile: this.nodeFallbackStore.profile ? { ...this.nodeFallbackStore.profile } : null,
           hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
         };
       }
 
       try {
         const db = await this.getDB();
-        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'policies', 'goals', 'profile', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
 
         const tx = db.transaction(storeNames, 'readonly');
         const getStore = (name: string) => new Promise<any[]>((resolve) => {
-          if (!db.objectStoreNames.contains(name)) {
-            resolve([]);
-            return;
-          }
+          if (!db.objectStoreNames.contains(name)) return resolve([]);
           const req = tx.objectStore(name).getAll();
           req.onsuccess = () => resolve(req.result || []);
           req.onerror = () => resolve([]);
         });
 
-        const [txs, assets, liabs, snaps, accounts, budgets, meta] = await Promise.all([
+        const [
+          transactions,
+          assets,
+          liabilities,
+          snapshots,
+          accounts,
+          budgets,
+          policies,
+          goals,
+          profiles,
+          meta
+        ] = await Promise.all([
           getStore('transactions'),
           getStore('assets'),
           getStore('liabilities'),
           getStore('snapshots'),
           getStore('accounts'),
           getStore('budgets'),
+          getStore('policies'),
+          getStore('goals'),
+          getStore('profile'),
           getStore('meta')
         ]);
 
-        const hasLoadedMeta = meta.find(m => m.key === 'hasLoadedOnce');
-        db.close();
+        const hasLoadedMeta = meta.find((m: any) => m.key === 'hasLoadedOnce');
+
         return {
-          transactions: txs as Transaction[],
+          transactions: transactions as Transaction[],
           assets: assets as Asset[],
-          liabilities: liabs as Liability[],
-          snapshots: snaps as NetWorthSnapshot[],
+          liabilities: liabilities as Liability[],
+          snapshots: snapshots as NetWorthSnapshot[],
           accounts: accounts as Account[],
           budgets: budgets as MonthlyBudget[],
+          policies: policies as InsurancePolicy[],
+          goals: goals as FinancialGoal[],
+          profile: (profiles.length > 0 ? profiles[0] : null) as FinancialProfile | null,
           hasLoadedOnce: !!hasLoadedMeta?.value
         };
       } catch (e) {
@@ -114,6 +150,9 @@ export class IndexedDBStorageService {
           snapshots: [...this.nodeFallbackStore.snapshots],
           accounts: [...this.nodeFallbackStore.accounts],
           budgets: [...this.nodeFallbackStore.budgets],
+          policies: [...this.nodeFallbackStore.policies],
+          goals: [...this.nodeFallbackStore.goals],
+          profile: this.nodeFallbackStore.profile ? { ...this.nodeFallbackStore.profile } : null,
           hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
         };
       }
@@ -127,6 +166,9 @@ export class IndexedDBStorageService {
     snapshots: NetWorthSnapshot[];
     accounts?: Account[];
     budgets?: MonthlyBudget[];
+    policies?: InsurancePolicy[];
+    goals?: FinancialGoal[];
+    profile?: FinancialProfile | null;
   }): Promise<void> {
     return this.enqueueSave(async () => {
       if (this.simulateFailureOnce) {
@@ -136,6 +178,9 @@ export class IndexedDBStorageService {
 
       const accounts = state.accounts || [];
       const budgets = state.budgets || [];
+      const policies = state.policies || [];
+      const goals = state.goals || [];
+      const profile = state.profile ? [state.profile] : [];
 
       if (typeof window === 'undefined' || !window.indexedDB) {
         this.nodeFallbackStore = {
@@ -145,6 +190,9 @@ export class IndexedDBStorageService {
           snapshots: [...state.snapshots],
           accounts: [...accounts],
           budgets: [...budgets],
+          policies: [...policies],
+          goals: [...goals],
+          profile: state.profile ? { ...state.profile } : null,
           hasLoadedOnce: true
         };
         return;
@@ -152,7 +200,7 @@ export class IndexedDBStorageService {
 
       try {
         const db = await this.getDB();
-        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'policies', 'goals', 'profile', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
 
         const tx = db.transaction(storeNames, 'readwrite');
@@ -171,6 +219,9 @@ export class IndexedDBStorageService {
         clearAndPut('snapshots', state.snapshots);
         clearAndPut('accounts', accounts);
         clearAndPut('budgets', budgets);
+        clearAndPut('policies', policies);
+        clearAndPut('goals', goals);
+        clearAndPut('profile', profile);
 
         if (db.objectStoreNames.contains('meta')) {
           const metaStore = tx.objectStore('meta');
@@ -195,6 +246,9 @@ export class IndexedDBStorageService {
           snapshots: [...state.snapshots],
           accounts: [...accounts],
           budgets: [...budgets],
+          policies: [...policies],
+          goals: [...goals],
+          profile: state.profile ? { ...state.profile } : null,
           hasLoadedOnce: true
         };
       }
@@ -216,6 +270,9 @@ export class IndexedDBStorageService {
           snapshots: [],
           accounts: [],
           budgets: [],
+          policies: [],
+          goals: [],
+          profile: null,
           hasLoadedOnce: true
         };
         return;
@@ -223,7 +280,7 @@ export class IndexedDBStorageService {
 
       try {
         const db = await this.getDB();
-        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'policies', 'goals', 'profile', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
 
         const tx = db.transaction(storeNames, 'readwrite');
@@ -235,6 +292,7 @@ export class IndexedDBStorageService {
         if (db.objectStoreNames.contains('meta')) {
           tx.objectStore('meta').put({ key: 'hasLoadedOnce', value: true });
         }
+
         await new Promise<void>((resolve, reject) => {
           tx.oncomplete = () => {
             db.close();
@@ -253,6 +311,9 @@ export class IndexedDBStorageService {
           snapshots: [],
           accounts: [],
           budgets: [],
+          policies: [],
+          goals: [],
+          profile: null,
           hasLoadedOnce: true
         };
       }

@@ -8,7 +8,12 @@ import {
   NetWorthSnapshot,
   Account,
   ControlledAccountType,
-  MonthlyBudget
+  MonthlyBudget,
+  InsurancePolicy,
+  PolicyType,
+  FinancialGoal,
+  GoalTemplateType,
+  FinancialProfile
 } from '../domain/types';
 import { formatDisplayDate, DateRangeService } from '../services/DateRangeService';
 import { Sha256Service } from '../services/Sha256Service';
@@ -21,6 +26,9 @@ interface LedgerState {
   snapshots: NetWorthSnapshot[];
   accounts: Account[];
   budgets: MonthlyBudget[];
+  policies: InsurancePolicy[];
+  goals: FinancialGoal[];
+  profile: FinancialProfile | null;
   privacyMasked: boolean;
   filterType: 'Expense' | 'Income' | 'Transfer' | 'All';
   dateRange: string;
@@ -42,6 +50,9 @@ interface LedgerState {
     snapshots: NetWorthSnapshot[];
     accounts?: Account[];
     budgets?: MonthlyBudget[];
+    policies?: InsurancePolicy[];
+    goals?: FinancialGoal[];
+    profile?: FinancialProfile | null;
   }) => void;
 
   initialize: () => Promise<void>;
@@ -73,13 +84,40 @@ interface LedgerState {
   removeAccount: (id: string) => void;
   saveMonthlyBudget: (monthStr: string, allocations: Record<string, number>) => void;
 
-  // Queries
+  // Essentials Actions (WP-19)
+  addPolicy: (params: {
+    type: PolicyType;
+    provider: string;
+    policyNumber?: string;
+    coverAmount: number;
+    premiumAmount: number;
+    renewalDate?: string;
+    status?: 'Active' | 'Lapsed' | 'Pending';
+    currency?: string;
+    notes?: string;
+  }) => void;
+  removePolicy: (id: string) => void;
+  addGoal: (params: {
+    name: string;
+    template: GoalTemplateType;
+    targetAmount: number;
+    targetDate?: string;
+    currentSavedAmount?: number;
+    monthlyContribution?: number;
+    linkedCategory?: string;
+    status?: 'In Progress' | 'Achieved' | 'Paused';
+    currency?: string;
+    notes?: string;
+  }) => void;
+  removeGoal: (id: string) => void;
+  saveProfile: (profile: FinancialProfile) => void;
+
   getFilteredTransactions: (params?: {
     type?: 'Expense' | 'Income' | 'Transfer' | 'All';
     dateRange?: string;
     search?: string;
-    customStart?: string | null;
-    customEnd?: string | null;
+    customStart?: string;
+    customEnd?: string;
   }) => Transaction[];
   getNetWorth: () => number;
 }
@@ -96,6 +134,9 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
   snapshots: [],
   accounts: [],
   budgets: [],
+  policies: [],
+  goals: [],
+  profile: null,
   privacyMasked: typeof window !== 'undefined' ? localStorage.getItem('finapp.privacy.masked') === 'true' : false,
   filterType: 'Expense',
   dateRange: 'This Month',
@@ -103,15 +144,15 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
   customStart: '2026-07-01',
   customEnd: APP_AS_OF_DATE,
 
-  setFilterType: (type) => set({ filterType: type }),
-  setDateRange: (range) => {
-    set({ dateRange: range });
-    if (range === '12M') {
+  setFilterType: (filterType) => set({ filterType }),
+  setDateRange: (dateRange) => {
+    set({ dateRange });
+    if (dateRange === '12M') {
       set({ filterType: 'Income' });
     }
   },
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setCustomRange: (start, end) => set({ customStart: start, customEnd: end, dateRange: 'Custom' }),
+  setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setCustomRange: (customStart, customEnd) => set({ customStart, customEnd, dateRange: 'Custom' }),
   togglePrivacy: () => {
     const next = !get().privacyMasked;
     localStorage.setItem('finapp.privacy.masked', String(next));
@@ -125,7 +166,10 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       liabilities: state.liabilities,
       snapshots: state.snapshots,
       accounts: state.accounts || [],
-      budgets: state.budgets || []
+      budgets: state.budgets || [],
+      policies: state.policies || [],
+      goals: state.goals || [],
+      profile: state.profile ?? null
     });
   },
 
@@ -142,7 +186,7 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
   },
 
   addIncome: (title, amount, account, category, notes) => {
-    repository.transactions.append({
+    const tx: Transaction = {
       id: 'tx-inc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       date: APP_AS_OF_DATE,
       dateStr: formatDisplayDate(APP_AS_OF_DATE),
@@ -154,11 +198,12 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       amount,
       status: 'CLEARED',
       notes
-    });
+    };
+    repository.transactions.append(tx);
   },
 
   addExpense: (title, amount, account, category, notes) => {
-    repository.transactions.append({
+    const tx: Transaction = {
       id: 'tx-exp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       date: APP_AS_OF_DATE,
       dateStr: formatDisplayDate(APP_AS_OF_DATE),
@@ -170,18 +215,19 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       amount,
       status: 'CLEARED',
       notes: notes || 'Manual expense entry'
-    });
+    };
+    repository.transactions.append(tx);
   },
 
   addTransfer: (source, destination, amount) => {
-    const trId = 'tr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-    const debitTx: Transaction = {
-      id: trId + '-debit',
-      transferId: trId,
+    const transferId = 'tr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const debitLeg: Transaction = {
+      id: transferId + '-debit',
+      transferId,
       date: APP_AS_OF_DATE,
       dateStr: formatDisplayDate(APP_AS_OF_DATE),
       title: 'Transfer to ' + destination,
-      narration: 'TRANSFER-DEBIT/' + trId,
+      narration: 'TRANSFER-DEBIT/' + transferId,
       account: source,
       type: 'Transfer',
       category: 'TRANSFER',
@@ -189,13 +235,13 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       status: 'CLEARED',
       notes: 'Bank-to-Bank Transfer (Debit)'
     };
-    const creditTx: Transaction = {
-      id: trId + '-credit',
-      transferId: trId,
+    const creditLeg: Transaction = {
+      id: transferId + '-credit',
+      transferId,
       date: APP_AS_OF_DATE,
       dateStr: formatDisplayDate(APP_AS_OF_DATE),
       title: 'Transfer from ' + source,
-      narration: 'TRANSFER-CREDIT/' + trId,
+      narration: 'TRANSFER-CREDIT/' + transferId,
       account: destination,
       type: 'Transfer',
       category: 'TRANSFER',
@@ -203,7 +249,7 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       status: 'CLEARED',
       notes: 'Bank-to-Bank Transfer (Credit)'
     };
-    repository.transactions.appendMany([debitTx, creditTx]);
+    repository.transactions.appendMany([debitLeg, creditLeg]);
   },
 
   addAsset: (name, amount) => {
@@ -270,6 +316,26 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
 
   saveMonthlyBudget: (monthStr, allocations) => {
     FinancialCommands.saveMonthlyBudget(monthStr, allocations);
+  },
+
+  addPolicy: (params) => {
+    FinancialCommands.recordPolicy(params);
+  },
+
+  removePolicy: (id) => {
+    FinancialCommands.deletePolicy(id);
+  },
+
+  addGoal: (params) => {
+    FinancialCommands.recordGoal(params);
+  },
+
+  removeGoal: (id) => {
+    FinancialCommands.deleteGoal(id);
+  },
+
+  saveProfile: (profile) => {
+    FinancialCommands.saveProfile(profile);
   },
 
   getFilteredTransactions: (params) => {

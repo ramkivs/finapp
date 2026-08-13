@@ -12,7 +12,12 @@ import {
   ControlledAccountType,
   MonthlyBudget,
   mapTransactionCategoryToBudget,
-  BUDGET_CATEGORY_FAMILIES
+  BUDGET_CATEGORY_FAMILIES,
+  InsurancePolicy,
+  PolicyType,
+  FinancialGoal,
+  GoalTemplateType,
+  FinancialProfile
 } from '../domain/types';
 import { formatDisplayDate } from '../services/DateRangeService';
 
@@ -313,6 +318,84 @@ export class FinancialCommands {
     return this.saveMonthlyBudget(targetMonthStr, { ...srcBudget.allocations });
   }
 
+  /* =========================================================================
+   * WP-19: Essentials Commands (Insurance Policies, Goals, Financial Profile)
+   * ========================================================================= */
+
+  static recordPolicy(params: {
+    type: PolicyType;
+    provider: string;
+    policyNumber?: string;
+    coverAmount: number;
+    premiumAmount: number;
+    renewalDate?: string;
+    status?: 'Active' | 'Lapsed' | 'Pending';
+    currency?: string;
+    notes?: string;
+  }): InsurancePolicy {
+    const policy: InsurancePolicy = {
+      id: 'pol-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      type: params.type,
+      provider: params.provider.trim(),
+      policyNumber: params.policyNumber?.trim() || undefined,
+      coverAmount: Number(params.coverAmount) || 0,
+      premiumAmount: Number(params.premiumAmount) || 0,
+      renewalDate: params.renewalDate || undefined,
+      status: params.status || 'Active',
+      currency: params.currency?.trim() || undefined, // No default INR; preserves Not Specified
+      notes: params.notes?.trim() || undefined
+    };
+
+    repository.policies.add(policy);
+    return policy;
+  }
+
+  static deletePolicy(id: string): void {
+    repository.policies.remove(id);
+  }
+
+  static recordGoal(params: {
+    name: string;
+    template: GoalTemplateType;
+    targetAmount: number;
+    targetDate?: string;
+    currentSavedAmount?: number;
+    monthlyContribution?: number;
+    linkedCategory?: string;
+    status?: 'In Progress' | 'Achieved' | 'Paused';
+    currency?: string;
+    notes?: string;
+  }): FinancialGoal {
+    const goal: FinancialGoal = {
+      id: 'goal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name: params.name.trim(),
+      template: params.template,
+      targetAmount: Number(params.targetAmount) || 0,
+      targetDate: params.targetDate || undefined,
+      currentSavedAmount: Number(params.currentSavedAmount) || 0,
+      monthlyContribution: Number(params.monthlyContribution) || 0,
+      linkedCategory: params.linkedCategory || undefined,
+      status: params.status || 'In Progress',
+      currency: params.currency?.trim() || undefined,
+      notes: params.notes?.trim() || undefined
+    };
+
+    repository.goals.add(goal);
+    return goal;
+  }
+
+  static deleteGoal(id: string): void {
+    repository.goals.remove(id);
+  }
+
+  static saveProfile(profile: FinancialProfile): void {
+    repository.profile.save({
+      ...profile,
+      id: 'default-profile',
+      updatedAt: new Date().toISOString()
+    });
+  }
+
   static async clearLocalDevelopmentData(): Promise<void> {
     await repository.clearLocalData();
   }
@@ -322,7 +405,9 @@ export class FinancialCommands {
   }
 
   static togglePrivacy(): void {
-    useCanonicalLedger.getState().togglePrivacy();
+    if (typeof window !== 'undefined' && (window as any).useCanonicalLedger) {
+      (window as any).useCanonicalLedger.getState().togglePrivacy();
+    }
   }
 }
 

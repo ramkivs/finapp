@@ -2,7 +2,9 @@ import {
   Transaction, Asset, Liability, NetWorthSnapshot,
   TransactionQuery, TransactionRepository, AssetRepository,
   LiabilityRepository, SnapshotRepository, FinancialRepositoryPort,
-  Account, AccountRepository, MonthlyBudget, BudgetRepository
+  Account, AccountRepository, MonthlyBudget, BudgetRepository,
+  InsurancePolicy, PolicyRepository, FinancialGoal, GoalRepository,
+  FinancialProfile, ProfileRepository
 } from '../domain/types';
 
 /**
@@ -51,6 +53,8 @@ export class PrismaAssetRepository implements AssetRepository {
   async add(_asset: Asset): Promise<void> {
     // Production implementation: await prisma.asset.create({ data: ... });
   }
+
+  async remove(_name: string): Promise<void> {}
 }
 
 export class PrismaLiabilityRepository implements LiabilityRepository {
@@ -65,6 +69,8 @@ export class PrismaLiabilityRepository implements LiabilityRepository {
   async add(_liability: Liability): Promise<void> {
     // Production implementation: await prisma.liability.create({ data: ... });
   }
+
+  async remove(_name: string): Promise<void> {}
 }
 
 export class PrismaSnapshotRepository implements SnapshotRepository {
@@ -78,6 +84,10 @@ export class PrismaSnapshotRepository implements SnapshotRepository {
 
   async create(_snapshot?: NetWorthSnapshot): Promise<void> {
     // Production implementation: await prisma.snapshot.create({ data: ... });
+  }
+
+  async add(_snapshot: NetWorthSnapshot): Promise<void> {
+    // Production implementation
   }
 }
 
@@ -114,6 +124,44 @@ export class PrismaBudgetRepository implements BudgetRepository {
   async save(_budget: MonthlyBudget): Promise<void> {}
 }
 
+export class PrismaPolicyRepository implements PolicyRepository {
+  async findAll(): Promise<InsurancePolicy[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): InsurancePolicy[] {
+    return [];
+  }
+
+  async add(_policy: InsurancePolicy): Promise<void> {}
+  async remove(_id: string): Promise<void> {}
+}
+
+export class PrismaGoalRepository implements GoalRepository {
+  async findAll(): Promise<FinancialGoal[]> {
+    return this.findAllSync();
+  }
+
+  findAllSync(): FinancialGoal[] {
+    return [];
+  }
+
+  async add(_goal: FinancialGoal): Promise<void> {}
+  async remove(_id: string): Promise<void> {}
+}
+
+export class PrismaProfileRepository implements ProfileRepository {
+  async get(): Promise<FinancialProfile | null> {
+    return this.getSync();
+  }
+
+  getSync(): FinancialProfile | null {
+    return null;
+  }
+
+  async save(_profile: FinancialProfile): Promise<void> {}
+}
+
 export class PrismaRepository implements FinancialRepositoryPort {
   public transactions = new PrismaTransactionRepository();
   public assets = new PrismaAssetRepository();
@@ -121,6 +169,9 @@ export class PrismaRepository implements FinancialRepositoryPort {
   public snapshots = new PrismaSnapshotRepository();
   public accounts = new PrismaAccountRepository();
   public budgets = new PrismaBudgetRepository();
+  public policies = new PrismaPolicyRepository();
+  public goals = new PrismaGoalRepository();
+  public profile = new PrismaProfileRepository();
 
   async clearLocalData(): Promise<void> {
     // Production implementation: await prisma.transaction.deleteMany(); etc.
