@@ -3,7 +3,8 @@ import { NetWorthSnapshot } from '../../domain/types';
 import { TakeSnapshotModal } from './TakeSnapshotModal';
 import { AddPastEntryModal } from './AddPastEntryModal';
 import { CurrencyValue } from '../CurrencyValue';
-import { Camera, Calendar } from 'lucide-react';
+import { WealthIntelligenceService } from '../../services/WealthIntelligenceService';
+import { Camera, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface Props {
   snapshots: NetWorthSnapshot[];
@@ -14,6 +15,8 @@ interface Props {
 export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, totalLiabilities }) => {
   const [takeModalOpen, setTakeModalOpen] = useState(false);
   const [pastModalOpen, setPastModalOpen] = useState(false);
+
+  const trend = WealthIntelligenceService.getTrendIntelligence(snapshots);
 
   const sortedSnaps = [...snapshots].sort((a, b) => {
     const tA = new Date(a.dateStr.replace(' (Today)', '')).getTime();
@@ -48,6 +51,72 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
           </button>
         </div>
       </div>
+
+      {/* Workstream C5: Trend Intelligence Banner when snapshots exist */}
+      {snapshots.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm">
+          <div>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              Latest Anchor Valuation
+            </span>
+            <div className="text-xl font-black text-gray-900 dark:text-white mt-1">
+              <CurrencyValue value={trend.latestNetWorth} />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 block">
+              As of {sortedSnaps[sortedSnaps.length - 1]?.dateStr}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              Period Trajectory Delta
+            </span>
+            <div className="text-xl font-black text-gray-900 dark:text-white mt-1">
+              {trend.absoluteChange !== undefined ? (
+                <span className={trend.absoluteChange >= 0 ? 'text-green-700 dark:text-green-400' : 'text-rose-600 dark:text-rose-400'}>
+                  {trend.absoluteChange >= 0 ? '+' : ''}<CurrencyValue value={trend.absoluteChange} />
+                </span>
+              ) : (
+                <span className="text-gray-400 text-sm font-semibold">1st Anchor Baseline</span>
+              )}
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 block">
+              {trend.percentageChange !== undefined
+                ? `${trend.percentageChange >= 0 ? '+' : ''}${trend.percentageChange.toFixed(1)}% vs previous anchor`
+                : 'Subsequent snapshots measure velocity'}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
+              Compounding Status
+            </span>
+            <div className="mt-1 flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                trend.status === 'COMPOUNDING_ACTIVE'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                  : trend.status === 'TREND_ACTIVE'
+                  ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400'
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+              }`}>
+                {trend.direction === 'UP' && <TrendingUp size={14} />}
+                {trend.direction === 'DOWN' && <TrendingDown size={14} />}
+                {trend.direction === 'FLAT' && <Minus size={14} />}
+                <span>
+                  {trend.status === 'COMPOUNDING_ACTIVE'
+                    ? 'Multi-Year Compounding Active'
+                    : trend.status === 'TREND_ACTIVE'
+                    ? '2-Point Trend Active'
+                    : 'Baseline Set'}
+                </span>
+              </span>
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
+              {snapshots.length} temporal data points
+            </span>
+          </div>
+        </div>
+      )}
 
       {snapshots.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-12 text-center shadow-sm">

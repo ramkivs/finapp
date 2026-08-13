@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { Asset } from '../../domain/types';
 import { CurrencyValue } from '../CurrencyValue';
 import { queries } from '../../application';
-import { PieChart, Globe, Repeat } from 'lucide-react';
+import { WealthIntelligenceService } from '../../services/WealthIntelligenceService';
+import { PieChart, Globe, Repeat, AlertTriangle, TrendingUp, Compass } from 'lucide-react';
 
 interface Props {
   assets: Asset[];
 }
 
 export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
-  const [allocTab, setAllocTab] = useState<'class' | 'geography' | 'sip'>('class');
+  const [allocTab, setAllocTab] = useState<'class' | 'geography' | 'sip' | 'diagnostics'>('class');
 
   const totAssets = assets.reduce((sum, a) => sum + a.amount, 0);
   const sipMetric = queries.getMetric('SIP_COMMITMENT_MONTHLY');
+  const diagnostics = WealthIntelligenceService.getAllocationDiagnostics(assets);
 
   // Derive actual class allocation from canonical assets
   const classBreakdown = assets.reduce<Record<string, number>>((acc, a) => {
@@ -32,7 +34,7 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
     <div className="space-y-6">
       {/* Subtabs for Allocation */}
       <div className="flex border-b border-gray-200 dark:border-gray-800 gap-8 overflow-x-auto">
-        {(['class', 'geography', 'sip'] as const).map((tab) => (
+        {(['class', 'geography', 'sip', 'diagnostics'] as const).map((tab) => (
           <button
             key={tab}
             id={`alloc-subtab-${tab}`}
@@ -59,6 +61,12 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
               <>
                 <Repeat size={15} />
                 <span>Monthly SIP Plan</span>
+              </>
+            )}
+            {tab === 'diagnostics' && (
+              <>
+                <Compass size={15} />
+                <span>Allocation Drift & Diagnostics</span>
               </>
             )}
           </button>
@@ -144,7 +152,7 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
             })}
           </div>
         </div>
-      ) : (
+      ) : allocTab === 'sip' ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -161,6 +169,57 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
             <span className="text-2xl font-extrabold text-green-700 dark:text-green-400">
               {sipMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : <CurrencyValue value={sipMetric.value} />}
             </span>
+          </div>
+        </div>
+      ) : (
+        /* Workstream C3: Allocation Drift & Diagnostics Tab */
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-sm space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h4 className="text-sm font-extrabold text-gray-900 dark:text-white">
+                Allocation Drift & Exposure Diagnostics
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Deterministic comparison between actual canonical portfolio weights and target benchmarks
+              </p>
+            </div>
+            {diagnostics.hasConcentrationWarning && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
+                <AlertTriangle size={13} />
+                <span>Heavy Category Concentration</span>
+              </span>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Asset Class</th>
+                  <th className="py-3 px-4 text-center">Target Benchmark</th>
+                  <th className="py-3 px-4 text-center">Actual Portfolio</th>
+                  <th className="py-3 px-4 text-right">Drift (Actual − Target)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
+                {diagnostics.targetDrift.map(d => {
+                  const isPositive = d.driftPct > 0;
+                  const isNeutral = d.driftPct === 0;
+                  return (
+                    <tr key={d.category} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                      <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">{d.category}</td>
+                      <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-400 font-semibold">{d.targetPct}%</td>
+                      <td className="py-3 px-4 text-center font-bold text-gray-900 dark:text-white">{d.actualPct}%</td>
+                      <td className={`py-3 px-4 text-right font-extrabold ${
+                        isNeutral ? 'text-gray-400' : isPositive ? 'text-cyan-600 dark:text-cyan-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}>
+                        {isPositive ? `+${d.driftPct}%` : `${d.driftPct}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

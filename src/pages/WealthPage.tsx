@@ -6,6 +6,9 @@ import { AssetsWorkspace } from '../components/wealth/AssetsWorkspace';
 import { LiabilitiesWorkspace } from '../components/wealth/LiabilitiesWorkspace';
 import { NetWorthWorkspace } from '../components/wealth/NetWorthWorkspace';
 import { AllocationWorkspace } from '../components/wealth/AllocationWorkspace';
+import { WealthHealthCard } from '../components/wealth/WealthHealthCard';
+import { WealthInsightsCard } from '../components/wealth/WealthInsightsCard';
+import { AssetConcentrationCard } from '../components/wealth/AssetConcentrationCard';
 import { Landmark, CreditCard, LineChart, PieChart } from 'lucide-react';
 
 export const WealthPage: React.FC = () => {
@@ -140,7 +143,7 @@ export const WealthPage: React.FC = () => {
         </nav>
       </div>
 
-      {/* 4. Active Workspace Content (Rendered Immediately Below Tabs) */}
+      {/* 4. Active Workspace Content */}
       <div className="min-h-[280px]">
         {subTab === 'assets' && <AssetsWorkspace assets={assets} />}
         {subTab === 'liabilities' && <LiabilitiesWorkspace liabilities={liabilities} />}
@@ -154,7 +157,28 @@ export const WealthPage: React.FC = () => {
         {subTab === 'allocation' && <AllocationWorkspace assets={assets} />}
       </div>
 
-      {/* 5. Supporting Analytics: Dividend Cash Flow Dashboard */}
+      {/* 5. Decision Intelligence & Action Layer (Workstream C1, C2, C6, C7) */}
+      <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Wealth Decision Intelligence & Health
+          </h2>
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            Solvency diagnostics, single-asset concentration analytics, and deterministic action queue.
+          </p>
+        </div>
+
+        {/* Wealth Health Diagnostics Bar */}
+        <WealthHealthCard assets={assets} liabilities={liabilities} snapshots={snapshots} />
+
+        {/* Action Queue & Insights */}
+        <WealthInsightsCard assets={assets} liabilities={liabilities} snapshots={snapshots} />
+
+        {/* Portfolio Concentration Analytics (if assets exist) */}
+        {assets.length > 0 && <AssetConcentrationCard assets={assets} />}
+      </div>
+
+      {/* 6. Supporting Analytics: Dividend Cash Flow Dashboard */}
       <div className="pt-8 border-t border-gray-200 dark:border-gray-800 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">

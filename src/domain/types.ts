@@ -174,9 +174,11 @@ export interface LiabilityRepository {
 
 export interface SnapshotRepository {
   findAll(): Promise<NetWorthSnapshot[]>;
-  findAllSync(): NetWorthSnapshot[];
+  findAllSync(): SnapshotRepositoryAllSync;
   create(snapshot?: NetWorthSnapshot): Promise<void>;
 }
+
+type SnapshotRepositoryAllSync = NetWorthSnapshot[];
 
 export interface FinancialRepositoryPort {
   transactions: TransactionRepository;
@@ -186,4 +188,99 @@ export interface FinancialRepositoryPort {
   clearLocalData(): Promise<void> | void;
   loadDemoData(): Promise<void> | void;
   initialize(): Promise<void> | void;
+}
+
+/* =========================================================================
+ * WP-17 Phase C: Wealth Intelligence & Diagnostics Types
+ * ========================================================================= */
+
+export interface WealthHealthSummary {
+  netWorth: number;
+  totalAssets: number;
+  totalLiabilities: number;
+  debtToAssetRatio: number;
+  liquidReserve: number;
+  liquidRatio: number;
+  topAssetConcentration: number;
+  status: 'RECONCILED' | 'NOT_CONFIGURED';
+}
+
+export interface AssetConcentrationAnalysis {
+  topAsset?: {
+    name: string;
+    amount: number;
+    pct: number;
+  };
+  byType: Array<{
+    type: string;
+    amount: number;
+    pct: number;
+  }>;
+  byGeography: Array<{
+    geography: string;
+    amount: number;
+    pct: number;
+  }>;
+  byCurrency: Array<{
+    currency: string;
+    amount: number;
+    pct: number;
+  }>;
+  isConcentrated: boolean;
+  unclassifiedPct: number;
+}
+
+export interface AllocationDiagnostics {
+  dominantCategory?: string;
+  underrepresentedCategories: string[];
+  targetDrift: Array<{
+    category: string;
+    targetPct: number;
+    actualPct: number;
+    driftPct: number;
+  }>;
+  hasConcentrationWarning: boolean;
+  metadataCompletenessPct: number;
+}
+
+export interface LiabilityDiagnostics {
+  totalDebt: number;
+  debtToAssetRatio: number;
+  largestLiability?: {
+    name: string;
+    amount: number;
+    type: string;
+    pct: number;
+  };
+  burdenLevel: 'LOW' | 'MODERATE' | 'ELEVATED' | 'NOT_CONFIGURED';
+}
+
+export interface NetWorthTrendIntelligence {
+  status: 'NOT_CONFIGURED' | 'BASELINE_SET' | 'TREND_ACTIVE' | 'COMPOUNDING_ACTIVE';
+  snapshotCount: number;
+  latestNetWorth: number;
+  previousNetWorth?: number;
+  absoluteChange?: number;
+  percentageChange?: number;
+  cagrValue?: number;
+  direction: 'UP' | 'DOWN' | 'FLAT' | 'NONE';
+}
+
+export interface WealthInsight {
+  id: string;
+  severity: 'INFO' | 'WATCH' | 'ACTION';
+  title: string;
+  explanation: string;
+  sourceMetric: string;
+  deterministicReason: string;
+}
+
+export interface WealthDataQuality {
+  status: 'COMPLETE' | 'PARTIAL' | 'NEEDS_ATTENTION' | 'NOT_CONFIGURED';
+  completenessScore: number;
+  missingAssetTypeCount: number;
+  missingGeographyCount: number;
+  missingCurrencyCount: number;
+  missingLiabilityTypeCount: number;
+  totalRecords: number;
 }
