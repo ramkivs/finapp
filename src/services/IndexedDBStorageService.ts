@@ -73,7 +73,7 @@ export class IndexedDBStorageService {
         const db = await this.getDB();
         const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
-        
+
         const tx = db.transaction(storeNames, 'readonly');
         const getStore = (name: string) => new Promise<any[]>((resolve) => {
           if (!db.objectStoreNames.contains(name)) {
@@ -154,7 +154,7 @@ export class IndexedDBStorageService {
         const db = await this.getDB();
         const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
-        
+
         const tx = db.transaction(storeNames, 'readwrite');
 
         const clearAndPut = (name: string, items: any[]) => {
@@ -225,7 +225,7 @@ export class IndexedDBStorageService {
         const db = await this.getDB();
         const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
           .filter(name => db.objectStoreNames.contains(name));
-        
+
         const tx = db.transaction(storeNames, 'readwrite');
         storeNames.forEach(name => {
           if (name !== 'meta') {
