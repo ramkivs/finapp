@@ -57,22 +57,33 @@ export class MemoryTransactionRepository implements TransactionRepository {
   }
 
   async append(transaction: Transaction): Promise<void> {
+    const prev = this.parent.transactionsData;
     const fp = transaction.fingerprint || generateFingerprint(transaction);
     const withFp = { ...transaction, fingerprint: fp };
-    this.parent.transactionsData = [withFp, ...this.parent.transactionsData];
+    const next = [withFp, ...prev];
+
+    this.parent.transactionsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: next,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: this.parent.accountsData,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.transactionsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 
   async appendMany(transactions: Transaction[]): Promise<void> {
-    const seen = new Set(this.parent.transactionsData.map(t => t.fingerprint || generateFingerprint(t)));
+    const prev = this.parent.transactionsData;
+    const seen = new Set(prev.map(t => t.fingerprint || generateFingerprint(t)));
     const unique: Transaction[] = [];
 
     for (const t of transactions) {
@@ -83,17 +94,25 @@ export class MemoryTransactionRepository implements TransactionRepository {
       }
     }
 
-    if (unique.length > 0) {
-      this.parent.transactionsData = [...unique, ...this.parent.transactionsData];
-      this.parent.syncStore();
+    if (unique.length === 0) return;
+
+    const next = [...unique, ...prev];
+    this.parent.transactionsData = next;
+    this.parent.syncStore();
+
+    try {
       await IndexedDBStorageService.saveAll({
-        transactions: this.parent.transactionsData,
+        transactions: next,
         assets: this.parent.assetsData,
         liabilities: this.parent.liabilitiesData,
         snapshots: this.parent.snapshotsData,
         accounts: this.parent.accountsData,
         budgets: this.parent.budgetsData
       });
+    } catch (err) {
+      this.parent.transactionsData = prev;
+      this.parent.syncStore();
+      throw err;
     }
   }
 }
@@ -110,21 +129,34 @@ export class MemoryAssetRepository implements AssetRepository {
   }
 
   async add(asset: Asset): Promise<void> {
-    const existingIndex = this.parent.assetsData.findIndex(a => a.name === asset.name);
+    const prev = this.parent.assetsData;
+    const existingIndex = prev.findIndex(a => a.name === asset.name);
+    let next: Asset[];
+
     if (existingIndex >= 0) {
-      this.parent.assetsData[existingIndex] = { ...asset };
+      next = [...prev];
+      next[existingIndex] = { ...asset };
     } else {
-      this.parent.assetsData = [...this.parent.assetsData, { ...asset }];
+      next = [...prev, { ...asset }];
     }
+
+    this.parent.assetsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: next,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: this.parent.accountsData,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.assetsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 }
 
@@ -140,21 +172,34 @@ export class MemoryLiabilityRepository implements LiabilityRepository {
   }
 
   async add(liability: Liability): Promise<void> {
-    const existingIndex = this.parent.liabilitiesData.findIndex(l => l.name === liability.name);
+    const prev = this.parent.liabilitiesData;
+    const existingIndex = prev.findIndex(l => l.name === liability.name);
+    let next: Liability[];
+
     if (existingIndex >= 0) {
-      this.parent.liabilitiesData[existingIndex] = { ...liability };
+      next = [...prev];
+      next[existingIndex] = { ...liability };
     } else {
-      this.parent.liabilitiesData = [...this.parent.liabilitiesData, { ...liability }];
+      next = [...prev, { ...liability }];
     }
+
+    this.parent.liabilitiesData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: next,
+        snapshots: this.parent.snapshotsData,
+        accounts: this.parent.accountsData,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.liabilitiesData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 }
 
@@ -170,12 +215,16 @@ export class MemorySnapshotRepository implements SnapshotRepository {
   }
 
   async create(snapshot?: NetWorthSnapshot): Promise<void> {
+    const prev = this.parent.snapshotsData;
+    let next: NetWorthSnapshot[];
+
     if (snapshot) {
-      const existingIdx = this.parent.snapshotsData.findIndex(s => s.dateStr === snapshot.dateStr);
+      const existingIdx = prev.findIndex(s => s.dateStr === snapshot.dateStr);
       if (existingIdx >= 0) {
-        this.parent.snapshotsData[existingIdx] = { ...snapshot };
+        next = [...prev];
+        next[existingIdx] = { ...snapshot };
       } else {
-        this.parent.snapshotsData = [snapshot, ...this.parent.snapshotsData];
+        next = [snapshot, ...prev];
       }
     } else {
       const totAssets = this.parent.assetsData.reduce((sum, a) => sum + a.amount, 0);
@@ -190,17 +239,26 @@ export class MemorySnapshotRepository implements SnapshotRepository {
         netWorth,
         status: 'Anchored Permanent'
       };
-      this.parent.snapshotsData = [newSnap, ...this.parent.snapshotsData];
+      next = [newSnap, ...prev];
     }
+
+    this.parent.snapshotsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: next,
+        accounts: this.parent.accountsData,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.snapshotsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 }
 
@@ -224,34 +282,57 @@ export class MemoryAccountRepository implements AccountRepository {
       throw new Error(`Account name "${account.name}" already exists. Account names must be unique.`);
     }
 
-    const existingIdx = this.parent.accountsData.findIndex(a => a.id === account.id);
+    const prev = this.parent.accountsData;
+    const existingIdx = prev.findIndex(a => a.id === account.id);
+    let next: Account[];
+
     if (existingIdx >= 0) {
-      this.parent.accountsData[existingIdx] = { ...account };
+      next = [...prev];
+      next[existingIdx] = { ...account };
     } else {
-      this.parent.accountsData = [...this.parent.accountsData, { ...account }];
+      next = [...prev, { ...account }];
     }
+
+    this.parent.accountsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: next,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.accountsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 
   async remove(id: string): Promise<void> {
-    this.parent.accountsData = this.parent.accountsData.filter(a => a.id !== id);
+    const prev = this.parent.accountsData;
+    const next = prev.filter(a => a.id !== id);
+
+    this.parent.accountsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: next,
+        budgets: this.parent.budgetsData
+      });
+    } catch (err) {
+      this.parent.accountsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 }
 
@@ -276,21 +357,34 @@ export class MemoryBudgetRepository implements BudgetRepository {
   }
 
   async save(budget: MonthlyBudget): Promise<void> {
-    const existingIdx = this.parent.budgetsData.findIndex(b => b.monthStr === budget.monthStr);
+    const prev = this.parent.budgetsData;
+    const existingIdx = prev.findIndex(b => b.monthStr === budget.monthStr);
+    let next: MonthlyBudget[];
+
     if (existingIdx >= 0) {
-      this.parent.budgetsData[existingIdx] = { ...budget };
+      next = [...prev];
+      next[existingIdx] = { ...budget };
     } else {
-      this.parent.budgetsData = [...this.parent.budgetsData, { ...budget }];
+      next = [...prev, { ...budget }];
     }
+
+    this.parent.budgetsData = next;
     this.parent.syncStore();
-    await IndexedDBStorageService.saveAll({
-      transactions: this.parent.transactionsData,
-      assets: this.parent.assetsData,
-      liabilities: this.parent.liabilitiesData,
-      snapshots: this.parent.snapshotsData,
-      accounts: this.parent.accountsData,
-      budgets: this.parent.budgetsData
-    });
+
+    try {
+      await IndexedDBStorageService.saveAll({
+        transactions: this.parent.transactionsData,
+        assets: this.parent.assetsData,
+        liabilities: this.parent.liabilitiesData,
+        snapshots: this.parent.snapshotsData,
+        accounts: this.parent.accountsData,
+        budgets: next
+      });
+    } catch (err) {
+      this.parent.budgetsData = prev;
+      this.parent.syncStore();
+      throw err;
+    }
   }
 }
 

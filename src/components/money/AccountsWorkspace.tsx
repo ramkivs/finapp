@@ -120,6 +120,7 @@ export const AccountsWorkspace: React.FC<Props> = ({ accounts }) => {
             Register bank accounts, credit cards, investment brokerages, and cash wallets to track balances and auto-populate transaction accounts.
           </p>
           <button
+            id="btn-add-account-empty"
             onClick={() => setModalOpen(true)}
             className="mt-5 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-xs font-bold transition shadow-sm"
           >

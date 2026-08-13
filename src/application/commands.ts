@@ -325,3 +325,7 @@ export class FinancialCommands {
     useCanonicalLedger.getState().togglePrivacy();
   }
 }
+
+if (typeof window !== 'undefined') {
+  (window as any).FinancialCommands = FinancialCommands;
+}
