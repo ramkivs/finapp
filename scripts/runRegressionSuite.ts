@@ -1716,6 +1716,240 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP19-E20'
   );
 
+  // 15. WP-19 Correction Pass: Canonical Semantics & Command Invariants (WP19-C01 to WP19-C10)
+  console.log('\n15. [WP-19 Correction Pass: Canonical Semantics & Command Invariants (WP19-C01 to WP19-C10)]');
+
+  // C01 — Liquid reserve canonical semantics (Sum of distinct Cash assets & Bank accounts)
+  const analysisDistinct = EssentialsService.calculateEmergencyFundAnalysis(
+    [{ name: 'Emergency Liquid Asset', amount: 300000, type: 'Cash & Savings' }],
+    [{ id: 'acc-1', name: 'Primary HDFC Checking', type: 'Bank', openingBalance: 200000 }],
+    [],
+    [],
+    6,
+    { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  );
+  assert(
+    analysisDistinct.liquidReserves === 500000 &&
+    analysisDistinct.runwayMonths === 10.0,
+    'Liquid reserves correctly sum distinct Cash/Savings assets and Bank accounts (300k + 200k = 500k)',
+    'WP19-C01'
+  );
+
+  // C02 — Distinct asset/account holdings vs same-name linkage
+  // Case 1: Account only
+  const analysisAccOnly = EssentialsService.calculateEmergencyFundAnalysis(
+    [],
+    [{ id: 'acc-1', name: 'Primary HDFC Checking', type: 'Bank', openingBalance: 250000 }],
+    [], [], 6, { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  );
+  // Case 2: Multiple accounts (Bank + Cash + Wallet)
+  const analysisMultiAcc = EssentialsService.calculateEmergencyFundAnalysis(
+    [],
+    [
+      { id: 'acc-1', name: 'HDFC Bank', type: 'Bank', openingBalance: 150000 },
+      { id: 'acc-2', name: 'Petty Cash', type: 'Cash', openingBalance: 50000 },
+      { id: 'acc-3', name: 'Paytm Wallet', type: 'Wallet', openingBalance: 10000 }
+    ],
+    [], [], 6, { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  );
+  // Case 3: Same-name asset & account prevents double counting
+  const analysisSameName = EssentialsService.calculateEmergencyFundAnalysis(
+    [{ name: 'HDFC Bank', amount: 100000, type: 'Cash & Savings' }],
+    [{ id: 'acc-1', name: 'HDFC Bank', type: 'Bank', openingBalance: 100000 }],
+    [], [], 6, { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  );
+  assert(
+    analysisAccOnly.liquidReserves === 250000 &&
+    analysisMultiAcc.liquidReserves === 210000 &&
+    analysisSameName.liquidReserves === 100000,
+    'Distinct asset/account holdings are summed while identical canonical entity names prevent double counting',
+    'WP19-C02'
+  );
+
+  // C03 — Insurance Life-only score (15/25 pts)
+  const healthLifeOnly = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-1', type: 'Term Life', provider: 'HDFC Life', coverAmount: 10000000, premiumAmount: 15000, status: 'Active' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  assert(
+    healthLifeOnly.insuranceAdequacyScore === 15 &&
+    healthLifeOnly.explanations.some(e => e.includes('Term Life cover only')),
+    'Active Term Life insurance without Health insurance scores exactly 15/25 pts',
+    'WP19-C03'
+  );
+
+  // C04 — Insurance Health-only score (15/25 pts)
+  const healthHealthOnly = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-2', type: 'Health', provider: 'Star Health', coverAmount: 1000000, premiumAmount: 20000, status: 'Active' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  assert(
+    healthHealthOnly.insuranceAdequacyScore === 15 &&
+    healthHealthOnly.explanations.some(e => e.includes('Health cover only')),
+    'Active Health insurance without Term Life insurance scores exactly 15/25 pts',
+    'WP19-C04'
+  );
+
+  // C05 — Insurance Life+Health score (25/25 pts)
+  const healthLifeAndHealth = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-1', type: 'Term Life', provider: 'HDFC Life', coverAmount: 10000000, premiumAmount: 15000, status: 'Active' },
+      { id: 'pol-2', type: 'Health', provider: 'Star Health', coverAmount: 1000000, premiumAmount: 20000, status: 'Active' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  assert(
+    healthLifeAndHealth.insuranceAdequacyScore === 25 &&
+    healthLifeAndHealth.explanations.some(e => e.includes('Term Life + Health')),
+    'Active Life + Active Health insurance receives full 25/25 pts regardless of monetary threshold',
+    'WP19-C05'
+  );
+
+  // C06 — Inactive insurance excluded from category adequacy
+  const healthInactiveExcl1 = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-1', type: 'Term Life', provider: 'HDFC Life', coverAmount: 10000000, premiumAmount: 15000, status: 'Active' },
+      { id: 'pol-2', type: 'Health', provider: 'Star Health', coverAmount: 1000000, premiumAmount: 20000, status: 'Lapsed' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  const healthInactiveExcl2 = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-1', type: 'Term Life', provider: 'HDFC Life', coverAmount: 10000000, premiumAmount: 15000, status: 'Pending' },
+      { id: 'pol-2', type: 'Health', provider: 'Star Health', coverAmount: 1000000, premiumAmount: 20000, status: 'Active' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  const healthInactiveExcl3 = EssentialsService.calculateFinancialHealthScore({
+    emergencyAnalysis: analysisDistinct,
+    totalDebt: 0,
+    totalAssets: 500000,
+    policies: [
+      { id: 'pol-1', type: 'Term Life', provider: 'HDFC Life', coverAmount: 10000000, premiumAmount: 15000, status: 'Pending' },
+      { id: 'pol-2', type: 'Health', provider: 'Star Health', coverAmount: 1000000, premiumAmount: 20000, status: 'Lapsed' }
+    ],
+    profile: { id: 'p', monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 50, updatedAt: '' }
+  });
+  assert(
+    healthInactiveExcl1.insuranceAdequacyScore === 15 &&
+    healthInactiveExcl2.insuranceAdequacyScore === 15 &&
+    healthInactiveExcl3.insuranceAdequacyScore === 0,
+    'Lapsed and Pending insurance policies are strictly excluded from insurance adequacy scoring',
+    'WP19-C06'
+  );
+
+  // C07 — Fresh profile has no fake defaults
+  await repository.clearLocalData();
+  const freshProf = repository.profile.getSync();
+  const freshHealthScore = queries.getFinancialHealthScore();
+  assert(
+    freshProf === null &&
+    freshHealthScore.status === 'NOT_CONFIGURED' &&
+    freshHealthScore.score === 0,
+    'Fresh local runtime starts with null profile and NOT_CONFIGURED health score without fake defaults',
+    'WP19-C07'
+  );
+
+  // C08 — Command-layer policy validation
+  let threwEmptyProvider = false;
+  try {
+    commands.recordPolicy({ type: 'Term Life', provider: '', coverAmount: 10000000, premiumAmount: 15000 });
+  } catch (err: any) {
+    threwEmptyProvider = err.message.includes('provider name is required');
+  }
+
+  let threwZeroCover = false;
+  try {
+    commands.recordPolicy({ type: 'Term Life', provider: 'ICICI Prudential', coverAmount: 0, premiumAmount: 15000 });
+  } catch (err: any) {
+    threwZeroCover = err.message.includes('Cover amount must be greater than zero');
+  }
+
+  let threwNegativePremium = false;
+  try {
+    commands.recordPolicy({ type: 'Term Life', provider: 'ICICI Prudential', coverAmount: 5000000, premiumAmount: -500 });
+  } catch (err: any) {
+    threwNegativePremium = err.message.includes('Premium amount cannot be negative');
+  }
+  assert(
+    threwEmptyProvider && threwZeroCover && threwNegativePremium,
+    'FinancialCommands.recordPolicy enforces strict domain validation (provider, coverAmount > 0, premium >= 0)',
+    'WP19-C08'
+  );
+
+  // C09 — Command-layer goal validation
+  let threwEmptyGoalName = false;
+  try {
+    commands.recordGoal({ name: '   ', template: 'Retirement', targetAmount: 10000000 });
+  } catch (err: any) {
+    threwEmptyGoalName = err.message.includes('Goal name is required');
+  }
+
+  let threwZeroGoalTarget = false;
+  try {
+    commands.recordGoal({ name: 'Valid Goal', template: 'Retirement', targetAmount: 0 });
+  } catch (err: any) {
+    threwZeroGoalTarget = err.message.includes('Target corpus amount must be greater than zero');
+  }
+
+  let threwNegGoalSaved = false;
+  try {
+    commands.recordGoal({ name: 'Valid Goal', template: 'Retirement', targetAmount: 1000000, currentSavedAmount: -50000 });
+  } catch (err: any) {
+    threwNegGoalSaved = err.message.includes('Current saved amount cannot be negative');
+  }
+  assert(
+    threwEmptyGoalName && threwZeroGoalTarget && threwNegGoalSaved,
+    'FinancialCommands.recordGoal enforces strict domain validation (name, targetAmount > 0, saved >= 0)',
+    'WP19-C09'
+  );
+
+  // C10 — Command-layer profile validation
+  let threwNegIncome = false;
+  try {
+    commands.saveProfile({ id: 'p', monthlyIncome: -10000, monthlyExpenses: 50000, savingsRate: 0, updatedAt: '' });
+  } catch (err: any) {
+    threwNegIncome = err.message.includes('Monthly income cannot be negative');
+  }
+
+  let threwNegExpenses = false;
+  try {
+    commands.saveProfile({ id: 'p', monthlyIncome: 100000, monthlyExpenses: -5000, savingsRate: 0, updatedAt: '' });
+  } catch (err: any) {
+    threwNegExpenses = err.message.includes('Monthly expenses cannot be negative');
+  }
+
+  let threwInvalidAge = false;
+  try {
+    commands.saveProfile({ id: 'p', age: 150, monthlyIncome: 100000, monthlyExpenses: 50000, savingsRate: 0, updatedAt: '' });
+  } catch (err: any) {
+    threwInvalidAge = err.message.includes('Age must be a valid positive number');
+  }
+  assert(
+    threwNegIncome && threwNegExpenses && threwInvalidAge,
+    'FinancialCommands.saveProfile enforces strict domain validation (income >= 0, expenses >= 0, age in [1, 120])',
+    'WP19-C10'
+  );
+
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');

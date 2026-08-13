@@ -3,27 +3,33 @@ import { FinancialProfile } from '../../domain/types';
 import { FinancialQueries } from '../../application/queries';
 import { useCanonicalLedger } from '../../store/useCanonicalLedger';
 import { CurrencyValue } from '../CurrencyValue';
-import { UserCheck, Activity, ShieldCheck, TrendingUp, Save, CheckCircle2 } from 'lucide-react';
+import { UserCheck, Activity, ShieldCheck, TrendingUp, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface Props {
   profile: FinancialProfile | null;
 }
 
 export const FinancialProfileWorkspace: React.FC<Props> = ({ profile }) => {
-  const [age, setAge] = useState<string>(profile?.age ? String(profile.age) : '32');
+  const [age, setAge] = useState<string>(profile?.age !== undefined ? String(profile.age) : '');
   const [monthlyIncome, setMonthlyIncome] = useState<string>(profile?.monthlyIncome ? String(profile.monthlyIncome) : '');
   const [monthlyExpenses, setMonthlyExpenses] = useState<string>(profile?.monthlyExpenses ? String(profile.monthlyExpenses) : '');
-  const [dependents, setDependents] = useState<string>(profile?.dependents ? String(profile.dependents) : '2');
+  const [dependents, setDependents] = useState<string>(profile?.dependents !== undefined ? String(profile.dependents) : '');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const { saveProfile } = useCanonicalLedger();
 
   useEffect(() => {
     if (profile) {
-      if (profile.age) setAge(String(profile.age));
-      if (profile.monthlyIncome) setMonthlyIncome(String(profile.monthlyIncome));
-      if (profile.monthlyExpenses) setMonthlyExpenses(String(profile.monthlyExpenses));
-      if (profile.dependents) setDependents(String(profile.dependents));
+      setAge(profile.age !== undefined ? String(profile.age) : '');
+      setMonthlyIncome(profile.monthlyIncome ? String(profile.monthlyIncome) : '');
+      setMonthlyExpenses(profile.monthlyExpenses ? String(profile.monthlyExpenses) : '');
+      setDependents(profile.dependents !== undefined ? String(profile.dependents) : '');
+    } else {
+      setAge('');
+      setMonthlyIncome('');
+      setMonthlyExpenses('');
+      setDependents('');
     }
   }, [profile]);
 
@@ -34,17 +40,22 @@ export const FinancialProfileWorkspace: React.FC<Props> = ({ profile }) => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    saveProfile({
-      id: 'default-profile',
-      age: Number(age) || undefined,
-      monthlyIncome: incNum,
-      monthlyExpenses: expNum,
-      savingsRate: computedSavingsRate,
-      dependents: Number(dependents) || undefined,
-      updatedAt: new Date().toISOString()
-    });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setError('');
+    try {
+      saveProfile({
+        id: 'default-profile',
+        age: age ? Number(age) : undefined,
+        monthlyIncome: incNum,
+        monthlyExpenses: expNum,
+        savingsRate: computedSavingsRate,
+        dependents: dependents ? Number(dependents) : undefined,
+        updatedAt: new Date().toISOString()
+      });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Error saving financial profile.');
+    }
   };
 
   const healthScore = FinancialQueries.getFinancialHealthScore();
@@ -61,6 +72,13 @@ export const FinancialProfileWorkspace: React.FC<Props> = ({ profile }) => {
         <div className="bg-green-50 dark:bg-green-950/40 border border-green-300 dark:border-green-800 p-3 rounded-xl text-green-800 dark:text-green-300 text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 size={16} className="text-green-600 dark:text-green-400 flex-shrink-0" />
           <span>Financial profile parameters saved to canonical store successfully.</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 p-3 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle size={16} className="text-rose-600 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 

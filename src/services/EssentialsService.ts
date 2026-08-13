@@ -15,6 +15,11 @@ export class EssentialsService {
   /**
    * Calculate Emergency Fund Analysis.
    * Coverage Months = Liquid Reserves / Monthly Essential Expenses
+   *
+   * Liquid Reserves Semantics:
+   * - Includes all Cash & Savings assets from Wealth registry.
+   * - Includes all Bank, Cash, and Wallet accounts from Money accounts registry.
+   * - Excludes accounts that share the identical canonical name with a Cash & Savings asset to prevent double counting.
    */
   static calculateEmergencyFundAnalysis(
     assets: Asset[] = [],
@@ -24,16 +29,20 @@ export class EssentialsService {
     targetMonths: number = 6,
     customProfile?: FinancialProfile | null
   ): EmergencyFundAnalysis {
-    // 1. Calculate Liquid Reserves strictly from Cash & Savings assets and Bank/Cash/Wallet accounts
+    // 1. Calculate Liquid Reserves from Cash & Savings assets and eligible liquid accounts
     const assetsLiquid = assets
       .filter(a => a.type === 'Cash & Savings')
       .reduce((s, a) => s + a.amount, 0);
 
-    const accountsLiquid = accounts
-      .filter(a => a.type === 'Bank' || a.type === 'Cash' || a.type === 'Wallet')
-      .reduce((s, a) => s + a.openingBalance, 0);
+    const assetNames = new Set(
+      assets.filter(a => a.type === 'Cash & Savings').map(a => a.name.trim().toLowerCase())
+    );
 
-    const liquidReserves = Math.max(assetsLiquid, accountsLiquid);
+    const accountsLiquid = accounts
+      .filter(acc => (acc.type === 'Bank' || acc.type === 'Cash' || acc.type === 'Wallet') && !assetNames.has(acc.name.trim().toLowerCase()))
+      .reduce((s, acc) => s + acc.openingBalance, 0);
+
+    const liquidReserves = assetsLiquid + accountsLiquid;
 
     // 2. Calculate Monthly Essential Expenses
     let monthlyEssentialExpenses = 0;
@@ -155,13 +164,14 @@ export class EssentialsService {
    * 1. Emergency Runway (25 pts): >=6M=25, >=3M=15, >0=5, else 0
    * 2. Debt Solvency (25 pts): Debt/Assets <=20%=25, <=50%=15, <=80%=5, else 0
    * 3. Savings Rate (25 pts): >=30%=25, >=15%=15, >0%=5, else 0
-   * 4. Insurance Adequacy (25 pts): Life+Health=25, Single Policy=15, else 0
+   * 4. Insurance Adequacy (25 pts): Active Life + Active Health = 25, Single Active Category = 15, No Active Insurance = 0
    */
   static calculateFinancialHealthScore(params: {
     emergencyAnalysis: EmergencyFundAnalysis;
     totalDebt: number;
     totalAssets: number;
-    totalInsuranceCover: number;
+    totalInsuranceCover?: number;
+    policies?: InsurancePolicy[];
     profile: FinancialProfile | null;
     savingsRate?: number;
   }): HealthScoreBreakdown {
@@ -170,16 +180,23 @@ export class EssentialsService {
       totalDebt,
       totalAssets,
       totalInsuranceCover,
+      policies = [],
       profile,
       savingsRate
     } = params;
+
+    const activePolicies = policies.filter(p => p.status === 'Active');
+    const totCover = totalInsuranceCover !== undefined
+      ? totalInsuranceCover
+      : this.calculateActiveInsuranceTotal(policies);
 
     // Check if system has any data configured
     const hasData =
       emergencyAnalysis.status === 'RECONCILED' ||
       totalAssets > 0 ||
       totalDebt > 0 ||
-      totalInsuranceCover > 0 ||
+      totCover > 0 ||
+      activePolicies.length > 0 ||
       (profile !== null && (profile.monthlyIncome > 0 || profile.monthlyExpenses > 0));
 
     if (!hasData) {
@@ -260,14 +277,24 @@ export class EssentialsService {
       explanations.push('No ongoing savings surplus detected (0/25 pts)');
     }
 
-    // Factor 4: Insurance Coverage (25 pts)
+    // Factor 4: Insurance Adequacy (25 pts)
+    // Strictly evaluates active policies by category without arbitrary monetary thresholds
+    const hasActiveLife = activePolicies.some(p => p.type === 'Term Life');
+    const hasActiveHealth = activePolicies.some(p => p.type === 'Health');
+
     let insuranceScore = 0;
-    if (totalInsuranceCover >= 5000000) {
+    if (hasActiveLife && hasActiveHealth) {
       insuranceScore = 25;
-      explanations.push('Robust active insurance protection in place (25/25 pts)');
-    } else if (totalInsuranceCover > 0) {
+      explanations.push('Comprehensive active insurance coverage in place (Term Life + Health) (25/25 pts)');
+    } else if (hasActiveLife) {
       insuranceScore = 15;
-      explanations.push('Baseline insurance coverage recorded (15/25 pts)');
+      explanations.push('Partial insurance protection (Active Term Life cover only; Health insurance missing) (15/25 pts)');
+    } else if (hasActiveHealth) {
+      insuranceScore = 15;
+      explanations.push('Partial insurance protection (Active Health cover only; Term Life insurance missing) (15/25 pts)');
+    } else if (activePolicies.length > 0) {
+      insuranceScore = 15;
+      explanations.push(`Partial insurance protection (Active ${activePolicies[0].type} cover only) (15/25 pts)`);
     } else {
       insuranceScore = 0;
       explanations.push('No active term or health insurance policies recorded (0/25 pts)');

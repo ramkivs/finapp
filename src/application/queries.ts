@@ -234,6 +234,7 @@ export class FinancialQueries {
       totalDebt,
       totalAssets,
       totalInsuranceCover,
+      policies,
       profile,
       savingsRate: insights.savingsRate
     });
