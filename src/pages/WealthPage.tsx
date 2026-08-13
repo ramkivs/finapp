@@ -6,16 +6,20 @@ import { AssetsWorkspace } from '../components/wealth/AssetsWorkspace';
 import { LiabilitiesWorkspace } from '../components/wealth/LiabilitiesWorkspace';
 import { NetWorthWorkspace } from '../components/wealth/NetWorthWorkspace';
 import { AllocationWorkspace } from '../components/wealth/AllocationWorkspace';
+import { WealthHealthCard } from '../components/wealth/WealthHealthCard';
+import { WealthInsightsCard } from '../components/wealth/WealthInsightsCard';
+import { AssetConcentrationCard } from '../components/wealth/AssetConcentrationCard';
+import { APP_AS_OF_DATE } from '../domain/types';
 import { Landmark, CreditCard, LineChart, PieChart } from 'lucide-react';
 
 export const WealthPage: React.FC = () => {
   const [subTab, setSubTab] = useState<'assets' | 'liabilities' | 'networth' | 'allocation'>('assets');
   const { transactions, assets, liabilities, snapshots } = useCanonicalLedger();
 
-  const ttmMetric = FinancialMetricService.getMetric('TTM_REALIZED_DIVIDEND', transactions, assets, liabilities);
-  const avgMetric = FinancialMetricService.getMetric('MONTHLY_AVERAGE_DIVIDEND', transactions, assets, liabilities);
-  const mtdMetric = FinancialMetricService.getMetric('MTD_REALIZED_DIVIDEND', transactions, assets, liabilities);
-  const cagrMetric = FinancialMetricService.getMetric('NET_WORTH_CAGR', transactions, assets, liabilities);
+  const ttmMetric = FinancialMetricService.getMetric('TTM_REALIZED_DIVIDEND', transactions, assets, liabilities, snapshots);
+  const avgMetric = FinancialMetricService.getMetric('MONTHLY_AVERAGE_DIVIDEND', transactions, assets, liabilities, snapshots);
+  const mtdMetric = FinancialMetricService.getMetric('MTD_REALIZED_DIVIDEND', transactions, assets, liabilities, snapshots);
+  const cagrMetric = FinancialMetricService.getMetric('NET_WORTH_CAGR', transactions, assets, liabilities, snapshots);
   const histogramSeries = FinancialMetricService.getSeries('MONTHLY_DIVIDEND_HISTOGRAM', transactions);
 
   const buckets = histogramSeries?.points || [];
@@ -24,6 +28,9 @@ export const WealthPage: React.FC = () => {
   const totAssets = assets.reduce((s, a) => s + a.amount, 0);
   const totLiabs = liabilities.reduce((s, l) => s + l.amount, 0);
   const currentNetWorth = totAssets - totLiabs;
+
+  const asOfDate = new Date(APP_AS_OF_DATE);
+  const currentMonthLabel = asOfDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <div className="space-y-8">
@@ -100,9 +107,9 @@ export const WealthPage: React.FC = () => {
           </div>
           <div className="mt-2">
             <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold">
-              {cagrMetric.status === 'NOT_CONFIGURED' || cagrMetric.value === 0
-                ? '1Y CAGR (Snapshots req.)'
-                : `↑ +${cagrMetric.value}% 1Y CAGR`}
+              {cagrMetric.status === 'NOT_CONFIGURED'
+                ? 'CAGR (Snapshots req.)'
+                : (cagrMetric.value > 0 ? `↑ +${cagrMetric.value}% Annualized CAGR` : `${cagrMetric.value}% Annualized CAGR`)}
             </span>
           </div>
         </div>
@@ -140,7 +147,7 @@ export const WealthPage: React.FC = () => {
         </nav>
       </div>
 
-      {/* 4. Active Workspace Content (Rendered Immediately Below Tabs) */}
+      {/* 4. Active Workspace Content */}
       <div className="min-h-[280px]">
         {subTab === 'assets' && <AssetsWorkspace assets={assets} />}
         {subTab === 'liabilities' && <LiabilitiesWorkspace liabilities={liabilities} />}
@@ -154,7 +161,28 @@ export const WealthPage: React.FC = () => {
         {subTab === 'allocation' && <AllocationWorkspace assets={assets} />}
       </div>
 
-      {/* 5. Supporting Analytics: Dividend Cash Flow Dashboard */}
+      {/* 5. Decision Intelligence & Action Layer (Workstream C1, C2, C6, C7) */}
+      <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Wealth Decision Intelligence & Health
+          </h2>
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            Solvency diagnostics, single-asset concentration analytics, and deterministic action queue.
+          </p>
+        </div>
+
+        {/* Wealth Health Diagnostics Bar */}
+        <WealthHealthCard assets={assets} liabilities={liabilities} snapshots={snapshots} />
+
+        {/* Action Queue & Insights */}
+        <WealthInsightsCard assets={assets} liabilities={liabilities} snapshots={snapshots} />
+
+        {/* Portfolio Concentration Analytics (if assets exist) */}
+        {assets.length > 0 && <AssetConcentrationCard assets={assets} />}
+      </div>
+
+      {/* 6. Supporting Analytics: Dividend Cash Flow Dashboard */}
       <div className="pt-8 border-t border-gray-200 dark:border-gray-800 space-y-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -193,7 +221,7 @@ export const WealthPage: React.FC = () => {
 
           <div className="bg-green-50/50 dark:bg-green-950/20 border border-green-300 dark:border-green-800 rounded-2xl p-6 shadow-sm">
             <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              August 2026 (Ongoing Month - MTD)
+              {`${currentMonthLabel} (Ongoing Month - MTD)`}
             </div>
             <div className="text-3xl font-black text-green-700 dark:text-green-400 mb-2">
               <CurrencyValue value={mtdMetric.value} />
