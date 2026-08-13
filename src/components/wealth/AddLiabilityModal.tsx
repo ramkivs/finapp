@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LiabilityType } from '../../domain/types';
 import { useCanonicalLedger } from '../../store/useCanonicalLedger';
-import { X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -52,81 +52,81 @@ export const AddLiabilityModal: React.FC<Props> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#0D1824] border border-[#233548] rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#233548]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-800">
           <div>
-            <h3 className="text-lg font-extrabold text-[#F5F8FC]">
-              {step === 1 ? 'Step 1: Select Loan Type' : `Step 2: Add ${selectedType}`}
+            <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
+              {step === 1 ? 'Step 1: Select Loan Classification' : `Step 2: Add ${selectedType}`}
             </h3>
-            <p className="text-xs text-[#94A3B8] mt-0.5">
-              {step === 1 ? 'Choose an institutional liability class' : 'Enter liability obligation and metadata'}
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {step === 1 ? 'Choose a debt classification' : 'Enter liability balance and metadata'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] flex items-center justify-center text-[#94A3B8] hover:text-[#F5F8FC] transition"
+            className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
           >
             <X size={18} />
           </button>
         </div>
 
         {step === 1 ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {LOAN_CATEGORIES.map((cat) => (
               <button
                 key={cat.type}
                 onClick={() => handleSelectCategory(cat.type)}
-                className="bg-[#111F2D] hover:bg-[#142333] border border-[#233548] hover:border-[#EF4444] p-3 rounded-xl text-left transition flex flex-col justify-between h-24"
+                className="bg-gray-50 dark:bg-gray-800 hover:bg-rose-50 dark:hover:bg-rose-950/20 border border-gray-200 dark:border-gray-700 hover:border-rose-600 dark:hover:border-rose-500 p-4 rounded-xl text-left transition flex flex-col justify-between h-24 group"
               >
-                <span className="text-xs font-bold text-[#F5F8FC]">{cat.type}</span>
-                <span className="text-[10px] text-[#94A3B8]">{cat.desc}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-rose-700 dark:group-hover:text-rose-400">{cat.type}</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">{cat.desc}</span>
               </button>
             ))}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-[#94A3B8] mb-1">Liability Name *</label>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Liability Name *</label>
               <input
                 type="text"
-                placeholder="e.g. HDFC Mortgage, ICICI Credit Card"
+                placeholder="e.g. HDFC Home Loan, ICICI Coral Card"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#EF4444]"
+                className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-rose-600 dark:focus:border-rose-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Obligation (INR) *</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Outstanding Balance (INR) *</label>
                 <input
                   type="number"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#EF4444]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-rose-600 dark:focus:border-rose-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#94A3B8] mb-1">Currency (Metadata)</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Currency (Metadata)</label>
                 <input
                   type="text"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full bg-[#111F2D] border border-[#233548] rounded-xl px-3.5 py-2.5 text-xs text-[#F5F8FC] outline-none focus:border-[#EF4444]"
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 dark:text-white outline-none focus:border-rose-600 dark:focus:border-rose-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#233548] mt-6">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-800 mt-6">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#111F2D] hover:bg-[#142333] border border-[#233548] text-[#94A3B8] hover:text-[#F5F8FC] text-xs font-semibold transition"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold transition"
               >
                 <ArrowLeft size={14} />
                 <span>Back</span>
@@ -134,7 +134,7 @@ export const AddLiabilityModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-[#EF4444] hover:bg-[#EF4444]/90 text-white font-bold text-xs transition shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs transition shadow-sm"
               >
                 Save Liability
               </button>

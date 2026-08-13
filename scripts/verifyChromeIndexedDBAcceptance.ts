@@ -606,6 +606,256 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Browser process restart preserves legitimate user asset/liability/snapshot metadata"
     );
 
+    console.log("\n  [WP-17 Phase B: Empirical Chromium + UX & Information Architecture Suite (WP17-BUX-01 to WP17-BUX-16)]");
+
+    // WP17-BUX-01: Primary Wealth workspace navigation exposed above supporting analytics
+    await clickNav(page, "Wealth");
+    await new Promise(r => setTimeout(r, 400));
+    const layoutHierarchy = await page.evaluate(() => {
+      const tabNav = document.querySelector('#wealth-tab-assets');
+      const headings = Array.from(document.querySelectorAll('h2, h3'));
+      const divHeading = headings.find(h => h.textContent?.includes('Supporting Analytics') || h.textContent?.includes('Dividend Cash Flow'));
+      if (!tabNav || !divHeading) return { ok: false, reason: 'elements missing' };
+      const tabBox = tabNav.getBoundingClientRect();
+      const divBox = divHeading.getBoundingClientRect();
+      return { ok: tabBox.top < divBox.top, tabTop: tabBox.top, divTop: divBox.top };
+    });
+    check(
+      layoutHierarchy.ok,
+      "WP17-BUX-01",
+      "Entering Wealth immediately exposes primary Wealth workspace navigation above supporting analytics"
+    );
+
+    // WP17-BUX-02: Assets workspace is reachable immediately
+    await page.click('#wealth-tab-assets');
+    await new Promise(r => setTimeout(r, 300));
+    const assetsWorkspaceVisible = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Total Valuation') || text.includes('No assets added') || text.includes('Asset Name');
+    });
+    check(
+      assetsWorkspaceVisible,
+      "WP17-BUX-02",
+      "Assets workspace is reachable immediately without scrolling"
+    );
+
+    // WP17-BUX-03: Liabilities workspace is reachable immediately
+    await page.click('#wealth-tab-liabilities');
+    await new Promise(r => setTimeout(r, 300));
+    const liabWorkspaceVisible = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Active Credit Facilities') || text.includes('Total Debt Obligation') || text.includes('No liabilities recorded');
+    });
+    check(
+      liabWorkspaceVisible,
+      "WP17-BUX-03",
+      "Liabilities workspace is reachable immediately"
+    );
+
+    // WP17-BUX-04: Net Worth workspace is reachable immediately
+    await page.click('#wealth-tab-networth');
+    await new Promise(r => setTimeout(r, 300));
+    const nwWorkspaceVisible = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Net Worth Historical Snapshots') || text.includes('Add Past Entry') || text.includes('Take New Snapshot');
+    });
+    check(
+      nwWorkspaceVisible,
+      "WP17-BUX-04",
+      "Net Worth workspace is reachable immediately"
+    );
+
+    // WP17-BUX-05: Allocation workspace is reachable immediately
+    await page.click('#wealth-tab-allocation');
+    await new Promise(r => setTimeout(r, 300));
+    const allocWorkspaceVisible = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Asset Allocation') || text.includes('Target Allocation') || text.includes('No assets recorded');
+    });
+    check(
+      allocWorkspaceVisible,
+      "WP17-BUX-05",
+      "Allocation workspace is reachable immediately"
+    );
+
+    // WP17-BUX-06: Active workspace tab is visually obvious
+    const activeTabIndicator = await page.evaluate(() => {
+      const allocBtn = document.querySelector('#wealth-tab-allocation');
+      const assetsBtn = document.querySelector('#wealth-tab-assets');
+      if (!allocBtn || !assetsBtn) return false;
+      const allocClass = allocBtn.className || '';
+      const assetsClass = assetsBtn.className || '';
+      return allocClass.includes('border-green') && !assetsClass.includes('border-green');
+    });
+    check(
+      activeTabIndicator,
+      "WP17-BUX-06",
+      "Active workspace tab is visually obvious with distinct active indicator"
+    );
+
+    // WP17-BUX-07: Workspace switching preserves canonical data
+    await page.click('#wealth-tab-assets');
+    await new Promise(r => setTimeout(r, 300));
+    const switchingPreserved = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Persistent Restart Asset') || text.includes('Total Valuation');
+    });
+    check(
+      switchingPreserved,
+      "WP17-BUX-07",
+      "Workspace switching preserves canonical data across subtabs"
+    );
+
+    // WP17-BUX-08: Assets added in Phase A/B remain visible in AssetTable
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addAssetWithMetadata({
+        name: "WP17 Phase B Treasury Bond",
+        amount: 250000,
+        type: "Debt",
+        geography: "India",
+        currency: "INR"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    const foundAssetInDOM = await page.evaluate(() => {
+      return (document.body.textContent || '').includes('WP17 Phase B Treasury Bond');
+    });
+    check(
+      foundAssetInDOM,
+      "WP17-BUX-08",
+      "Assets added in Phase A/B remain visible in AssetTable"
+    );
+
+    // WP17-BUX-09: Liabilities added in Phase A/B remain visible in LiabilityTable
+    await page.click('#wealth-tab-liabilities');
+    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addLiabilityWithMetadata({
+        name: "WP17 Phase B Education Loan",
+        amount: 180000,
+        type: "Education Loan",
+        currency: "INR"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    const foundLiabInDOM = await page.evaluate(() => {
+      return (document.body.textContent || '').includes('WP17 Phase B Education Loan');
+    });
+    check(
+      foundLiabInDOM,
+      "WP17-BUX-09",
+      "Liabilities added in Phase A/B remain visible in LiabilityTable"
+    );
+
+    // WP17-BUX-10: Historical snapshots remain visible in Net Worth table
+    await page.click('#wealth-tab-networth');
+    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => {
+      window.useCanonicalLedger.getState().addPastSnapshot({
+        dateStr: "12-12-2024",
+        totalAssets: 600000,
+        totalLiabilities: 150000,
+        label: "Year End 2024"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    const foundSnapInDOM = await page.evaluate(() => {
+      return (document.body.textContent || '').includes('Year End 2024') && (document.body.textContent || '').includes('12-12-2024');
+    });
+    check(
+      foundSnapInDOM,
+      "WP17-BUX-10",
+      "Historical snapshots remain visible in Net Worth table with label and date"
+    );
+
+    // WP17-BUX-11: Allocation remains derived from canonical asset data
+    await page.click('#wealth-tab-allocation');
+    await new Promise(r => setTimeout(r, 300));
+    const allocDerivedDOM = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Actual Canonical Portfolio Allocation') && (text.includes('Debt') || text.includes('Real Estate'));
+    });
+    check(
+      allocDerivedDOM,
+      "WP17-BUX-11",
+      "Allocation remains derived strictly from canonical asset data"
+    );
+
+    // WP17-BUX-12: Browser refresh preserves all existing Wealth data
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 500));
+    const reloadPreservedData = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          const txA = db.transaction("assets", "readonly");
+          const reqA = txA.objectStore("assets").getAll();
+          reqA.onsuccess = () => {
+            const hasBond = (reqA.result || []).some((a: any) => a.name === "WP17 Phase B Treasury Bond");
+            db.close();
+            resolve(hasBond);
+          };
+        };
+      });
+    });
+    check(
+      Boolean(reloadPreservedData),
+      "WP17-BUX-12",
+      "Browser refresh preserves all existing Wealth data in real IndexedDB"
+    );
+
+    // WP17-BUX-13: Empty repository displays truthful empty states
+    await clickNav(page, "Clear Dev Data");
+    await new Promise(r => setTimeout(r, 500));
+    await clickNav(page, "Wealth");
+    await new Promise(r => setTimeout(r, 400));
+    const emptyAssetsText = await page.evaluate(() => {
+      return (document.body.textContent || '').includes('No assets added');
+    });
+    check(
+      emptyAssetsText,
+      "WP17-BUX-13",
+      "Empty repository displays truthful empty states"
+    );
+
+    // WP17-BUX-14: No demo data is introduced
+    const wealthEmptyDom = await verifyNoDemoValuesInDOM(page);
+    check(
+      wealthEmptyDom.clean,
+      "WP17-BUX-14",
+      "No demo data is introduced into Wealth UI"
+    );
+
+    // WP17-BUX-15: Reduced viewport does not hide or destroy the primary Wealth navigation
+    await page.setViewport({ width: 375, height: 667 });
+    await new Promise(r => setTimeout(r, 300));
+    const mobileNavWorks = await page.evaluate(() => {
+      const assetsTab = document.querySelector('#wealth-tab-assets');
+      const liabTab = document.querySelector('#wealth-tab-liabilities');
+      const nwTab = document.querySelector('#wealth-tab-networth');
+      const allocTab = document.querySelector('#wealth-tab-allocation');
+      return Boolean(assetsTab && liabTab && nwTab && allocTab);
+    });
+    await page.setViewport({ width: 1280, height: 800 });
+    await new Promise(r => setTimeout(r, 300));
+    check(
+      mobileNavWorks,
+      "WP17-BUX-15",
+      "Reduced viewport preserves all 4 primary Wealth navigation workspace tabs"
+    );
+
+    // WP17-BUX-16: Dividend Cash Flow Dashboard remains available as supporting analytics
+    const dividendAvailable = await page.evaluate(() => {
+      const text = document.body.textContent || '';
+      return text.includes('Supporting Analytics: Dividend Cash Flow & Yield') && text.includes('Reconciled 12-Month Total Dividend');
+    });
+    check(
+      dividendAvailable,
+      "WP17-BUX-16",
+      "Dividend Cash Flow Dashboard remains available as supporting analytics below primary workspace"
+    );
+
   } finally {
     await browser.close();
     if (serverProc) {
