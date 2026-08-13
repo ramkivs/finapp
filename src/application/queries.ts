@@ -239,3 +239,7 @@ export class FinancialQueries {
     });
   }
 }
+
+if (typeof window !== 'undefined') {
+  (window as any).FinancialQueries = FinancialQueries;
+}

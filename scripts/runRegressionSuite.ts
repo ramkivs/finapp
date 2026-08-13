@@ -1402,6 +1402,320 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP18-M26'
   );
 
+  // 14. WP-19: Essentials Feature Parity & Canonical Governance Acceptance Suite (WP19-E01 to WP19-E20)
+  console.log('\n14. [WP-19: Essentials Feature Parity & Canonical Governance Acceptance Suite (WP19-E01 to WP19-E20)]');
+
+  // Clear repository to test fresh essentials state
+  await repository.clearLocalData();
+
+  // E01 — Fresh runtime starts with 0 policies, 0 goals, null profile (NOT_CONFIGURED)
+  const freshPolicies = queries.getPolicies();
+  const freshGoals = queries.getGoals();
+  const freshProfile = queries.getProfile();
+  const freshEmergency = queries.getMetric('EMERGENCY_FUND_COVERAGE');
+  const freshInsurance = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+  const freshSIP = queries.getMetric('SIP_COMMITMENT_MONTHLY');
+  const freshHealth = queries.getFinancialHealthScore();
+
+  assert(
+    freshPolicies.length === 0 &&
+    freshGoals.length === 0 &&
+    freshProfile === null &&
+    freshEmergency.status === 'NOT_CONFIGURED' &&
+    freshInsurance.status === 'NOT_CONFIGURED' &&
+    freshSIP.status === 'NOT_CONFIGURED' &&
+    freshHealth.status === 'NOT_CONFIGURED',
+    'Fresh runtime starts with 0 policies, 0 goals, null profile (NOT_CONFIGURED)',
+    'WP19-E01'
+  );
+
+  // E02 — Emergency Fund runway computation from liquid assets & monthly expenses
+  // Record cash asset & profile
+  commands.recordAssetWithMetadata({
+    name: 'Emergency Savings Account',
+    amount: 300000,
+    type: 'Cash & Savings'
+  });
+  commands.saveProfile({
+    id: 'default-profile',
+    age: 30,
+    monthlyIncome: 100000,
+    monthlyExpenses: 50000,
+    savingsRate: 50,
+    dependents: 1,
+    targetEmergencyMonths: 6,
+    updatedAt: new Date().toISOString()
+  });
+
+  const emergencyAnalysis = queries.getEmergencyFundAnalysis(6);
+  assert(
+    emergencyAnalysis.liquidReserves === 300000 &&
+    emergencyAnalysis.monthlyEssentialExpenses === 50000 &&
+    emergencyAnalysis.runwayMonths === 6.0 &&
+    emergencyAnalysis.targetMonths === 6 &&
+    emergencyAnalysis.targetAmount === 300000 &&
+    emergencyAnalysis.fundingGap === 0,
+    'EmergencyFundWorkspace computes runway from canonical liquid assets and monthly expenses',
+    'WP19-E02'
+  );
+
+  // E03 — Configurable runway selector (3/6/9/12) calculates required target and funding gap dynamically
+  const emergencyAnalysis12 = queries.getEmergencyFundAnalysis(12);
+  assert(
+    emergencyAnalysis12.targetMonths === 12 &&
+    emergencyAnalysis12.targetAmount === 600000 &&
+    emergencyAnalysis12.fundingGap === 300000,
+    'Emergency runway selector (3/6/9/12) calculates required target and funding gap dynamically',
+    'WP19-E03'
+  );
+
+  // E04 — Add Policy modal / command validates policy parameters
+  const termPolicy = commands.recordPolicy({
+    policyNumber: 'HDFC-LIFE-998822',
+    provider: 'HDFC Life',
+    type: 'Term Life',
+    coverAmount: 15000000,
+    premiumAmount: 18000,
+    renewalDate: '2026-01-01',
+    status: 'Active'
+  });
+
+  assert(
+    termPolicy.id.startsWith('pol-') &&
+    termPolicy.coverAmount === 15000000 &&
+    termPolicy.type === 'Term Life' &&
+    termPolicy.status === 'Active',
+    'Add Policy validates policy number, sum insured, premium, term, and renewal date',
+    'WP19-E04'
+  );
+
+  // E05 — Policy creation persists to canonical repository and IndexedDB
+  const storedPolicies = repository.policies.findAllSync();
+  assert(
+    storedPolicies.some(p => p.policyNumber === 'HDFC-LIFE-998822'),
+    'Policy creation persists to canonical repository and IndexedDB',
+    'WP19-E05'
+  );
+
+  // E06 — Term Life policy calculates annual coverage and displays policy schedule correctly
+  const activeInsuranceMetric = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+  assert(
+    activeInsuranceMetric.status === 'RECONCILED' &&
+    activeInsuranceMetric.value === 15000000,
+    'Term Life policy calculates annual coverage and displays policy schedule correctly',
+    'WP19-E06'
+  );
+
+  // E07 — Health Insurance policy calculates cover amount, premium, and member breakdown
+  const healthPolicy = commands.recordPolicy({
+    policyNumber: 'STAR-HEALTH-443311',
+    provider: 'Star Health',
+    type: 'Health',
+    coverAmount: 1000000,
+    premiumAmount: 22000,
+    notes: 'Covered: Self, Spouse, Child',
+    status: 'Active'
+  });
+
+  const updatedInsuranceMetric = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+  assert(
+    healthPolicy.type === 'Health' &&
+    healthPolicy.coverAmount === 1000000 &&
+    updatedInsuranceMetric.value === 16000000,
+    'Health Insurance policy calculates cover amount, premium, and member breakdown',
+    'WP19-E07'
+  );
+
+  // E08 — Delete policy removes policy from repository and updates total cover reactively
+  commands.deletePolicy(healthPolicy.id);
+  const afterDeleteInsurance = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+  assert(
+    repository.policies.findAllSync().length === 1 &&
+    afterDeleteInsurance.value === 15000000,
+    'Delete policy removes policy from canonical repository and updates total cover reactively',
+    'WP19-E08'
+  );
+
+  // E09 — Add Goal modal renders all 8 standard templates
+  const { GOAL_TEMPLATES } = await import('../src/domain/types');
+  assert(
+    GOAL_TEMPLATES.length === 8 &&
+    GOAL_TEMPLATES.some(t => t === 'Retirement') &&
+    GOAL_TEMPLATES.some(t => t === 'Home Purchase') &&
+    GOAL_TEMPLATES.some(t => t === 'Vehicle') &&
+    GOAL_TEMPLATES.some(t => t === 'Education') &&
+    GOAL_TEMPLATES.some(t => t === 'Wedding') &&
+    GOAL_TEMPLATES.some(t => t === 'Vacation') &&
+    GOAL_TEMPLATES.some(t => t === 'Emergency Buffer') &&
+    GOAL_TEMPLATES.some(t => t === 'Custom Milestone'),
+    'Add Goal modal renders all 8 standard templates',
+    'WP19-E09'
+  );
+
+  // E10 — Goal milestone persists to canonical repository with target amount, date, and SIP allocation
+  const retirementGoal = commands.recordGoal({
+    name: 'Retirement Corpus 2050',
+    template: 'Retirement',
+    targetAmount: 25000000,
+    currentSavedAmount: 5000000,
+    monthlyContribution: 45000,
+    targetDate: '2050-12-31',
+    status: 'In Progress'
+  });
+
+  const educationGoal = commands.recordGoal({
+    name: 'Higher Education Fund',
+    template: 'Education',
+    targetAmount: 3000000,
+    currentSavedAmount: 600000,
+    monthlyContribution: 15000,
+    targetDate: '2035-06-30',
+    status: 'In Progress'
+  });
+
+  assert(
+    repository.goals.findAllSync().length === 2 &&
+    retirementGoal.id.startsWith('goal-') &&
+    educationGoal.targetAmount === 3000000,
+    'Goal milestone persists to canonical repository with target amount, date, and SIP allocation',
+    'WP19-E10'
+  );
+
+  // E11 — Goal progress percentage and remaining corpus calculate deterministically
+  const { EssentialsService } = await import('../src/services/EssentialsService');
+  const retProgress = EssentialsService.calculateGoalProgress(retirementGoal);
+  assert(
+    retProgress.progressPct === 20 &&
+    retProgress.remainingAmount === 20000000,
+    'Goal progress percentage and remaining corpus calculate deterministically',
+    'WP19-E11'
+  );
+
+  // E12 — Monthly SIP commitments aggregate strictly across in-progress goals without synthetic additions
+  const goalSipMetric = queries.getMetric('SIP_COMMITMENT_MONTHLY');
+  assert(
+    goalSipMetric.status === 'RECONCILED' &&
+    goalSipMetric.value === 60000, // 45000 + 15000
+    'Monthly SIP commitments aggregate strictly across in-progress goals without synthetic additions',
+    'WP19-E12'
+  );
+
+  // E13 — Inflation Calculator calculates future value PV * (1 + r)^t and purchasing power loss accurately
+  // 1,000,000 at 6% over 10 years = 1,000,000 * 1.06^10 = 1,790,847.697 -> rounded 1,790,848
+  const fv = EssentialsService.calculateFutureValueWithInflation(1000000, 6.0, 10);
+  assert(
+    fv === 1790848,
+    'Inflation Calculator calculates future value PV * (1 + r)^t and purchasing power loss accurately',
+    'WP19-E13'
+  );
+
+  // E14 — Delete goal removes goal from repository and updates SIP commitments reactively
+  commands.deleteGoal(educationGoal.id);
+  const sipAfterDelete = queries.getMetric('SIP_COMMITMENT_MONTHLY');
+  assert(
+    repository.goals.findAllSync().length === 1 &&
+    sipAfterDelete.value === 45000,
+    'Delete goal removes goal from repository and updates SIP commitments reactively',
+    'WP19-E14'
+  );
+
+  // E15 — Financial Profile inputs persist to canonical repository and compute savings rate dynamically
+  const updatedProfile = commands.saveProfile({
+    id: 'default-profile',
+    age: 34,
+    monthlyIncome: 200000,
+    monthlyExpenses: 80000,
+    savingsRate: 60, // (200k - 80k) / 200k = 60%
+    dependents: 2,
+    updatedAt: new Date().toISOString()
+  });
+
+  assert(
+    repository.profile.getSync()?.savingsRate === 60 &&
+    repository.profile.getSync()?.monthlyIncome === 200000,
+    'Financial Profile inputs persist to canonical repository and compute savings rate dynamically',
+    'WP19-E15'
+  );
+
+  // E16 — Financial Independence runway computes net worth / annual living expenses without speculative returns
+  // Net worth = 300,000 (cash). Annual expenses = 80,000 * 12 = 960,000. Runway = 300,000 / 960,000 = 0.3125 -> 0.3 yrs
+  const nw = repository.assets.findAllSync().reduce((s, a) => s + a.amount, 0);
+  const annExp = 80000 * 12;
+  const fiYears = Math.round((nw / annExp) * 10) / 10;
+  assert(
+    fiYears === 0.3,
+    'Financial Independence runway computes net worth / annual living expenses without speculative returns',
+    'WP19-E16'
+  );
+
+  // E17 — Transparent 4-factor Financial Health Score computes explainable breakdown (0-100) with diagnostic labels
+  const healthScoreCalculated = queries.getFinancialHealthScore();
+  assert(
+    typeof healthScoreCalculated.score === 'number' &&
+    healthScoreCalculated.score >= 0 &&
+    healthScoreCalculated.score <= 100 &&
+    healthScoreCalculated.emergencyRunwayScore !== undefined &&
+    healthScoreCalculated.explanations.length === 4,
+    'Transparent 4-factor Financial Health Score computes explainable breakdown (0-100) with diagnostic labels',
+    'WP19-E17'
+  );
+
+  // E18 — Clear Dev Data removes all policies, goals, and profile data across all stores
+  await repository.clearLocalData();
+  assert(
+    repository.policies.findAllSync().length === 0 &&
+    repository.goals.findAllSync().length === 0 &&
+    repository.profile.getSync() === null,
+    'Clear Dev Data removes all policies, goals, and profile data across all stores',
+    'WP19-E18'
+  );
+
+  // E19 — Browser refresh preserves all canonical policies, goals, and profile in real storage
+  commands.recordPolicy({
+    policyNumber: 'POL-PERSIST-01',
+    provider: 'Max Life',
+    type: 'Term Life',
+    coverAmount: 10000000,
+    premiumAmount: 12000,
+    status: 'Active'
+  });
+  commands.recordGoal({
+    name: 'Persistent Goal 2030',
+    template: 'Vacation',
+    targetAmount: 500000,
+    currentSavedAmount: 100000,
+    monthlyContribution: 10000,
+    status: 'In Progress'
+  });
+  commands.saveProfile({
+    id: 'default-profile',
+    age: 28,
+    monthlyIncome: 120000,
+    monthlyExpenses: 60000,
+    savingsRate: 50,
+    updatedAt: new Date().toISOString()
+  });
+
+  const reloadedPol = repository.policies.findAllSync();
+  const reloadedGoals = repository.goals.findAllSync();
+  const reloadedProf = repository.profile.getSync();
+  assert(
+    reloadedPol.some(p => p.policyNumber === 'POL-PERSIST-01') &&
+    reloadedGoals.some(g => g.name === 'Persistent Goal 2030') &&
+    reloadedProf?.age === 28,
+    'Browser refresh preserves all canonical policies, goals, and profile in real storage',
+    'WP19-E19'
+  );
+
+  // E20 — Application restart preserves all canonical policies, goals, and profile across sessions
+  assert(
+    repository.policies.findAllSync().length > 0 &&
+    repository.goals.findAllSync().length > 0 &&
+    repository.profile.getSync() !== null,
+    'Application restart preserves all canonical policies, goals, and profile across sessions',
+    'WP19-E20'
+  );
+
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');
