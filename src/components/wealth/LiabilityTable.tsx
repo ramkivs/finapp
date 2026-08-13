@@ -27,11 +27,11 @@ export const LiabilityTable: React.FC<LiabilityTableProps> = ({ liabilities }) =
                 <td className="py-3.5 px-6 font-bold text-gray-900 dark:text-white">{l.name}</td>
                 <td className="py-3.5 px-6">
                   <span className="px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 text-xs font-bold">
-                    {l.type || 'Other'}
+                    {l.type || 'Unclassified'}
                   </span>
                 </td>
                 <td className="py-3.5 px-6 text-gray-600 dark:text-gray-400 text-xs">
-                  {l.currency || 'INR'}
+                  {l.currency || 'Not Specified'}
                 </td>
                 <td className="py-3.5 px-6 font-bold text-rose-600 dark:text-rose-400 text-right">
                   <CurrencyValue value={l.amount} />

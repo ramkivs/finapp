@@ -1,13 +1,15 @@
-import { APP_AS_OF_DATE, FinancialMetric, FinancialSeries, Transaction, Asset, Liability } from '../domain/types';
+import { APP_AS_OF_DATE, FinancialMetric, FinancialSeries, Transaction, Asset, Liability, NetWorthSnapshot } from '../domain/types';
 import { DateRangeService } from './DateRangeService';
 import { DividendService } from './DividendService';
+import { WealthIntelligenceService } from './WealthIntelligenceService';
 
 export class FinancialMetricService {
   static getMetric(
     metricName: string,
-    transactions: Transaction[],
-    assets: Asset[],
-    liabilities: Liability[],
+    transactions: Transaction[] = [],
+    assets: Asset[] = [],
+    liabilities: Liability[] = [],
+    snapshots: NetWorthSnapshot[] = [],
     asOfDateStr: string = APP_AS_OF_DATE
   ): FinancialMetric {
     if (metricName === 'TTM_REALIZED_DIVIDEND') {
@@ -117,29 +119,7 @@ export class FinancialMetricService {
         displayLabel: invAsset > 0 ? undefined : 'Not configured (Requires Portfolio Registry)'
       };
     } else if (metricName === 'NET_WORTH_CAGR') {
-      if (!assets || assets.length === 0) {
-        return {
-          metric: 'NET_WORTH_CAGR',
-          value: 0,
-          currency: '%',
-          asOf: asOfDateStr,
-          source: 'CanonicalLedger -> Historical Snapshots',
-          filters: {},
-          formula: 'CAGR(AnchoredSnapshots)',
-          status: 'NOT_CONFIGURED',
-          displayLabel: 'Not configured (Requires Snapshots)'
-        };
-      }
-      return {
-        metric: 'NET_WORTH_CAGR',
-        value: 24.1,
-        currency: '%',
-        asOf: asOfDateStr,
-        source: 'CanonicalLedger -> Historical Snapshots',
-        filters: {},
-        formula: 'CAGR(AnchoredSnapshots)',
-        status: 'RECONCILED'
-      };
+      return WealthIntelligenceService.calculateNetWorthCAGR(snapshots, asOfDateStr);
     } else if (
       metricName === 'EMERGENCY_FUND_COVERAGE' ||
       metricName === 'ACTIVE_INSURANCE_POLICY_TOTAL' ||
@@ -183,4 +163,8 @@ export class FinancialMetricService {
     }
     return null;
   }
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).FinancialMetricService = FinancialMetricService;
 }

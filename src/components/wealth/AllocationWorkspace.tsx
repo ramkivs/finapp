@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Asset } from '../../domain/types';
 import { CurrencyValue } from '../CurrencyValue';
 import { queries } from '../../application';
-import { WealthIntelligenceService } from '../../services/WealthIntelligenceService';
-import { PieChart, Globe, Repeat, AlertTriangle, TrendingUp, Compass } from 'lucide-react';
+import { WealthIntelligenceService, REFERENCE_ALLOCATION_BENCHMARK } from '../../services/WealthIntelligenceService';
+import { PieChart, Globe, Repeat, AlertTriangle, Compass } from 'lucide-react';
 
 interface Props {
   assets: Asset[];
@@ -15,20 +15,13 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
   const totAssets = assets.reduce((sum, a) => sum + a.amount, 0);
   const sipMetric = queries.getMetric('SIP_COMMITMENT_MONTHLY');
   const diagnostics = WealthIntelligenceService.getAllocationDiagnostics(assets);
+  const concentration = WealthIntelligenceService.getAssetConcentration(assets);
 
-  // Derive actual class allocation from canonical assets
-  const classBreakdown = assets.reduce<Record<string, number>>((acc, a) => {
-    const key = a.type || 'Other';
-    acc[key] = (acc[key] || 0) + a.amount;
-    return acc;
-  }, {});
+  // Authoritative class allocation from intelligence service
+  const classBreakdown = concentration.byType;
 
-  // Derive actual geography exposure strictly from explicit geography metadata (not currency)
-  const geoBreakdown = assets.reduce<Record<string, number>>((acc, a) => {
-    const key = a.geography || 'India';
-    acc[key] = (acc[key] || 0) + a.amount;
-    return acc;
-  }, {});
+  // Authoritative geography exposure from intelligence service (no local inference)
+  const geoBreakdown = concentration.byGeography;
 
   return (
     <div className="space-y-6">
@@ -82,30 +75,42 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
         </div>
       ) : allocTab === 'class' ? (
         <div className="space-y-6">
-          {/* Target Allocation Reference Default */}
+          {/* Reference Allocation Benchmark (Single Source of Truth) */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div>
-                <h4 className="text-sm font-extrabold text-gray-900 dark:text-white">Target Allocation (Presentation Reference Default)</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Recommended balanced portfolio exposure reference</p>
+                <h4 className="text-sm font-extrabold text-gray-900 dark:text-white">
+                  Reference Allocation Benchmark (Analytical Reference; Not Personalized Advice)
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Broad market multi-asset analytical benchmark for structural comparison
+                </p>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold">
-                Default Reference
+                Analytical Benchmark
               </span>
             </div>
+
+            {/* Benchmark Bar derived dynamically from single source of truth */}
             <div className="h-4 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex border border-gray-200 dark:border-gray-700">
-              <div style={{ width: '55%' }} className="bg-cyan-500 h-full" title="Equity: 55%" />
-              <div style={{ width: '20%' }} className="bg-green-500 h-full" title="Debt: 20%" />
-              <div style={{ width: '10%' }} className="bg-purple-500 h-full" title="Real Estate: 10%" />
-              <div style={{ width: '10%' }} className="bg-amber-500 h-full" title="Commodities: 10%" />
-              <div style={{ width: '5%' }} className="bg-gray-400 h-full" title="Cash: 5%" />
+              {REFERENCE_ALLOCATION_BENCHMARK.map((b) => (
+                <div
+                  key={b.category}
+                  style={{ width: `${b.targetPct}%` }}
+                  className={`${b.color} h-full`}
+                  title={`${b.category}: ${b.targetPct}%`}
+                />
+              ))}
             </div>
+
+            {/* Benchmark Legend derived dynamically from single source of truth */}
             <div className="flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400 mt-3 font-semibold">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />Equity 55%</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />Debt 20%</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" />Real Estate 10%</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Commodities 10%</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" />Cash 5%</span>
+              {REFERENCE_ALLOCATION_BENCHMARK.map((b) => (
+                <span key={b.category} className="flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${b.color}`} />
+                  {b.category} {b.targetPct}%
+                </span>
+              ))}
             </div>
           </div>
 
@@ -113,20 +118,17 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 rounded-2xl shadow-sm">
             <h4 className="text-sm font-extrabold text-gray-900 dark:text-white mb-4">Actual Canonical Portfolio Allocation</h4>
             <div className="space-y-3">
-              {Object.entries(classBreakdown).map(([cls, amt]) => {
-                const pct = totAssets > 0 ? Math.round((amt / totAssets) * 100) : 0;
-                return (
-                  <div key={cls} className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-4 rounded-xl flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">{cls}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{pct}%</span>
-                      <span className="text-sm font-extrabold text-green-700 dark:text-green-400">
-                        <CurrencyValue value={amt} />
-                      </span>
-                    </div>
+              {classBreakdown.map((item) => (
+                <div key={item.type} className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-4 rounded-xl flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">{item.type}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{item.pct}%</span>
+                    <span className="text-sm font-extrabold text-green-700 dark:text-green-400">
+                      <CurrencyValue value={item.amount} />
+                    </span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -135,21 +137,17 @@ export const AllocationWorkspace: React.FC<Props> = ({ assets }) => {
           <h4 className="text-sm font-extrabold text-gray-900 dark:text-white mb-2">Explicit Geography Exposure</h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Derived strictly from explicit geography metadata on canonical assets (no currency inference)</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {['India', 'International', 'Other'].map((geo) => {
-              const amt = geoBreakdown[geo] || 0;
-              const pct = totAssets > 0 ? Math.round((amt / totAssets) * 100) : 0;
-              return (
-                <div key={geo} className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-5 rounded-xl flex flex-col justify-between">
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{geo}</span>
-                  <div className="mt-4">
-                    <div className="text-2xl font-extrabold text-gray-900 dark:text-white">
-                      <CurrencyValue value={amt} />
-                    </div>
-                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-1 block">{pct}% of total valuation</span>
+            {geoBreakdown.map((geo) => (
+              <div key={geo.geography} className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-5 rounded-xl flex flex-col justify-between">
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{geo.geography}</span>
+                <div className="mt-4">
+                  <div className="text-2xl font-extrabold text-gray-900 dark:text-white">
+                    <CurrencyValue value={geo.amount} />
                   </div>
+                  <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-1 block">{geo.pct}% of total valuation</span>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       ) : allocTab === 'sip' ? (

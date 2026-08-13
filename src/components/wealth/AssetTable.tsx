@@ -28,14 +28,14 @@ export const AssetTable: React.FC<AssetTableProps> = ({ assets }) => {
                 <td className="py-3.5 px-6 font-bold text-gray-900 dark:text-white">{a.name}</td>
                 <td className="py-3.5 px-6">
                   <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold">
-                    {a.type || 'Other'}
+                    {a.type || 'Unclassified'}
                   </span>
                 </td>
                 <td className="py-3.5 px-6 text-gray-600 dark:text-gray-400 text-xs">
-                  {a.geography || 'India'}
+                  {a.geography || 'Not Specified'}
                 </td>
                 <td className="py-3.5 px-6 text-gray-600 dark:text-gray-400 text-xs">
-                  {a.currency || 'INR'}
+                  {a.currency || 'Not Specified'}
                 </td>
                 <td className="py-3.5 px-6 font-bold text-green-700 dark:text-green-400 text-right">
                   <CurrencyValue value={a.amount} />

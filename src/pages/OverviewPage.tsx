@@ -8,7 +8,7 @@ export const OverviewPage: React.FC = () => {
   const { assets, liabilities, snapshots, addAsset, addLiability, captureSnapshot } = useCanonicalLedger();
 
   const nwMetric = FinancialMetricService.getMetric('NET_WORTH', [], assets, liabilities);
-  const cagrMetric = FinancialMetricService.getMetric('NET_WORTH_CAGR', [], assets, liabilities);
+  const cagrMetric = FinancialMetricService.getMetric('NET_WORTH_CAGR', [], assets, liabilities, snapshots);
   const totAssets = assets.reduce((s, a) => s + a.amount, 0);
   const totLiabs = liabilities.reduce((s, l) => s + l.amount, 0);
 

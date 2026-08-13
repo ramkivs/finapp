@@ -43,7 +43,7 @@ export const AddLiabilityModal: React.FC<Props> = ({ isOpen, onClose }) => {
       name,
       amount: Number(amount),
       type: selectedType,
-      currency: currency || 'INR'
+      currency: currency || undefined
     });
     setName('');
     setAmount('');

@@ -3,7 +3,7 @@ import { NetWorthSnapshot } from '../../domain/types';
 import { TakeSnapshotModal } from './TakeSnapshotModal';
 import { AddPastEntryModal } from './AddPastEntryModal';
 import { CurrencyValue } from '../CurrencyValue';
-import { WealthIntelligenceService } from '../../services/WealthIntelligenceService';
+import { WealthIntelligenceService, parseDateToTime } from '../../services/WealthIntelligenceService';
 import { Camera, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface Props {
@@ -17,12 +17,12 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
   const [pastModalOpen, setPastModalOpen] = useState(false);
 
   const trend = WealthIntelligenceService.getTrendIntelligence(snapshots);
+  const cagrMetric = WealthIntelligenceService.calculateNetWorthCAGR(snapshots);
 
-  const sortedSnaps = [...snapshots].sort((a, b) => {
-    const tA = new Date(a.dateStr.replace(' (Today)', '')).getTime();
-    const tB = new Date(b.dateStr.replace(' (Today)', '')).getTime();
-    return (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
-  });
+  const sortedSnaps = [...snapshots]
+    .map(s => ({ ...s, timestamp: parseDateToTime(s.dateStr) }))
+    .filter(s => !isNaN(s.timestamp))
+    .sort((a, b) => a.timestamp - b.timestamp);
 
   return (
     <div className="space-y-6">
@@ -30,7 +30,7 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
       <div className="flex items-center justify-between flex-wrap gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-5 rounded-2xl shadow-sm">
         <div>
           <h3 className="text-base font-bold text-gray-900 dark:text-white">Net Worth Historical Snapshots ({snapshots.length})</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Reconciled temporal checkpoints anchoring 1-year CAGR compounding</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Reconciled temporal checkpoints anchoring multi-point net worth trajectory</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
 
           <div>
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
-              Period Trajectory Delta
+              Change Since Previous Snapshot
             </span>
             <div className="text-xl font-black text-gray-900 dark:text-white mt-1">
               {trend.absoluteChange !== undefined ? (
@@ -83,13 +83,13 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
             <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 block">
               {trend.percentageChange !== undefined
                 ? `${trend.percentageChange >= 0 ? '+' : ''}${trend.percentageChange.toFixed(1)}% vs previous anchor`
-                : 'Subsequent snapshots measure velocity'}
+                : 'Subsequent snapshots enable trend comparison'}
             </span>
           </div>
 
           <div>
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
-              Compounding Status
+              Historical Trajectory
             </span>
             <div className="mt-1 flex items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
@@ -104,15 +104,15 @@ export const NetWorthWorkspace: React.FC<Props> = ({ snapshots, totalAssets, tot
                 {trend.direction === 'FLAT' && <Minus size={14} />}
                 <span>
                   {trend.status === 'COMPOUNDING_ACTIVE'
-                    ? 'Multi-Year Compounding Active'
+                    ? (cagrMetric.status === 'RECONCILED' ? `${cagrMetric.value > 0 ? '+' : ''}${cagrMetric.value}% Annualized CAGR` : `Multi-Point Trajectory (${snapshots.length} Anchors)`)
                     : trend.status === 'TREND_ACTIVE'
                     ? '2-Point Trend Active'
-                    : 'Baseline Set'}
+                    : 'Baseline Set (1 Anchor)'}
                 </span>
               </span>
             </div>
             <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
-              {snapshots.length} temporal data points
+              {snapshots.length} temporal data points recorded
             </span>
           </div>
         </div>

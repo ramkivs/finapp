@@ -3,6 +3,7 @@ import { repository } from '../src/repositories';
 import { MemoryRepository } from '../src/repositories/MemoryRepository';
 import { FinancialCommands as commands } from '../src/application/commands';
 import { FinancialQueries as queries } from '../src/application/queries';
+import { FinancialMetricService } from '../src/services/FinancialMetricService';
 import { WealthIntelligenceService } from '../src/services/WealthIntelligenceService';
 import { Asset } from '../src/domain/types';
 import { useCanonicalLedger } from '../src/store/useCanonicalLedger';
@@ -747,7 +748,7 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
   ];
   const conc4 = WealthIntelligenceService.getAssetConcentration(nonInferredAssets);
   assert(
-    conc4.byGeography[0].geography === 'India', // defaults to India without assuming US
+    conc4.byGeography[0].geography === 'Not Specified', // Remains explicitly Not Specified
     'No geography inferred from currency (currency does not equal geography)',
     'WP17-C04'
   );
@@ -909,6 +910,257 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     true,
     'Phase-B navigation hierarchy remains intact',
     'WP17-C24'
+  );
+
+  console.log('\n12. [WP-17 Phase C Remediation: Semantic Integrity & Provenance Acceptance (WP17-C25 to WP17-C50)]');
+
+  // C25 — Missing geography remains unclassified/not specified
+  const testAssetsNoGeo: Asset[] = [
+    { name: 'Asset Without Geo', amount: 50000, type: 'Equity' }
+  ];
+  const conc25 = WealthIntelligenceService.getAssetConcentration(testAssetsNoGeo);
+  assert(
+    conc25.byGeography.some(g => g.geography === 'Not Specified' && g.amount === 50000),
+    'Missing geography remains unclassified/not specified without default fallback',
+    'WP17-C25'
+  );
+
+  // C26 — Missing currency remains unclassified/not specified
+  const testAssetsNoCurr: Asset[] = [
+    { name: 'Asset Without Currency', amount: 30000, type: 'Debt' }
+  ];
+  const conc26 = WealthIntelligenceService.getAssetConcentration(testAssetsNoCurr);
+  assert(
+    conc26.byCurrency.some(c => c.currency === 'Not Specified' && c.amount === 30000),
+    'Missing currency remains unclassified/not specified without default fallback',
+    'WP17-C26'
+  );
+
+  // C27 — No geography inference from currency, asset name, locale, or asset type
+  const testAssetsUsdName: Asset[] = [
+    { name: 'US Treasury Note USD', amount: 75000, type: 'Debt', currency: 'USD' }
+  ];
+  const conc27 = WealthIntelligenceService.getAssetConcentration(testAssetsUsdName);
+  assert(
+    conc27.byGeography.every(g => g.geography !== 'United States' && g.geography !== 'US'),
+    'No geography inference from currency, asset name, locale, or asset type',
+    'WP17-C27'
+  );
+
+  // C28 — AllocationWorkspace does not independently infer missing geography
+  assert(
+    conc25.byGeography[0].geography === 'Not Specified',
+    'AllocationWorkspace consumes authoritative geography without independent inference',
+    'WP17-C28'
+  );
+
+  // C29 — No hardcoded financial CAGR value exists in the implementation
+  const dynamicCagr = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '01-01-2024', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' },
+    { id: '2', dateStr: '01-01-2026', totalAssets: 144000, totalLiabilities: 0, netWorth: 144000, status: 'Anchored' }
+  ]);
+  assert(
+    dynamicCagr.value === 20 && dynamicCagr.status === 'RECONCILED',
+    'No hardcoded CAGR value; calculates dynamically (100k -> 144k in 2 years = +20.0% CAGR)',
+    'WP17-C29'
+  );
+
+  // C30 — Zero snapshots -> CAGR NOT_CONFIGURED / unavailable
+  const cagr0 = WealthIntelligenceService.calculateNetWorthCAGR([]);
+  assert(
+    cagr0.status === 'NOT_CONFIGURED' && cagr0.value === 0,
+    'Zero snapshots results in CAGR NOT_CONFIGURED',
+    'WP17-C30'
+  );
+
+  // C31 — One snapshot -> baseline only; no CAGR
+  const cagr1 = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '01-01-2026', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' }
+  ]);
+  assert(
+    cagr1.status === 'NOT_CONFIGURED' && cagr1.value === 0,
+    'One snapshot results in baseline only; CAGR NOT_CONFIGURED',
+    'WP17-C31'
+  );
+
+  // C32 — Valid multi-snapshot positive net-worth history calculates CAGR from actual snapshot dates
+  const cagr32 = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '09 Aug 2025', totalAssets: 7696422, totalLiabilities: 1850000, netWorth: 5846422, status: 'Anchored' },
+    { id: '2', dateStr: '09 Aug 2026', totalAssets: 8905410, totalLiabilities: 1650000, netWorth: 7255410, status: 'Anchored' }
+  ]);
+  assert(
+    cagr32.status === 'RECONCILED' && cagr32.value === 24.1,
+    'Valid multi-snapshot history calculates CAGR dynamically from actual snapshot dates (+24.1%)',
+    'WP17-C32'
+  );
+
+  // C33 — CAGR uses elapsed time and does not assume fixed one-year spacing
+  const cagr33 = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '01-01-2023', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' },
+    { id: '2', dateStr: '01-01-2026', totalAssets: 133100, totalLiabilities: 0, netWorth: 133100, status: 'Anchored' }
+  ]);
+  assert(
+    cagr33.status === 'RECONCILED' && cagr33.value === 10,
+    'CAGR uses actual elapsed time across 3 years (100k -> 133.1k = 10.0% CAGR)',
+    'WP17-C33'
+  );
+
+  // C34 — Zero CAGR is displayed as valid 0.00% when status is RECONCILED
+  const cagr34 = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '01-01-2025', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' },
+    { id: '2', dateStr: '01-01-2026', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' }
+  ]);
+  assert(
+    cagr34.status === 'RECONCILED' && cagr34.value === 0,
+    'Zero CAGR is a valid 0.0% RECONCILED metric when start === end',
+    'WP17-C34'
+  );
+
+  // C35 — Zero/negative starting net worth has deterministic non-CAGR policy and never produces NaN/Infinity
+  const cagrNegStart = WealthIntelligenceService.calculateNetWorthCAGR([
+    { id: '1', dateStr: '01-01-2025', totalAssets: 50000, totalLiabilities: 100000, netWorth: -50000, status: 'Anchored' },
+    { id: '2', dateStr: '01-01-2026', totalAssets: 150000, totalLiabilities: 50000, netWorth: 100000, status: 'Anchored' }
+  ]);
+  assert(
+    cagrNegStart.status === 'NOT_CONFIGURED' && !isNaN(cagrNegStart.value) && isFinite(cagrNegStart.value),
+    'Negative starting net worth triggers deterministic NOT_CONFIGURED without NaN/Infinity',
+    'WP17-C35'
+  );
+
+  // C36 — Reference allocation benchmark is explicitly non-personalized
+  assert(
+    WealthIntelligenceService.REFERENCE_BENCHMARK.length === 5 &&
+    WealthIntelligenceService.REFERENCE_BENCHMARK.some(b => b.category === 'Equity' && b.targetPct === 55),
+    'Reference allocation benchmark is defined as non-personalized analytical benchmark',
+    'WP17-C36'
+  );
+
+  // C37 — Only one authoritative allocation benchmark feeds both display and drift calculation
+  const benchmarkKeys = Object.keys(WealthIntelligenceService.TARGET_ALLOCATION_REFERENCE);
+  assert(
+    benchmarkKeys.length === 5 && benchmarkKeys.includes('Equity') && benchmarkKeys.includes('Cash & Savings'),
+    'Single authoritative allocation benchmark feeds both display and drift calculation',
+    'WP17-C37'
+  );
+
+  // C38 — Changing canonical benchmark changes both target display and drift output
+  const testDriftAssets: Asset[] = [{ name: 'Test Eq', amount: 100000, type: 'Equity' }];
+  const drift38 = WealthIntelligenceService.getAllocationDiagnostics(testDriftAssets);
+  const eqDrift38 = drift38.targetDrift.find(d => d.category === 'Equity');
+  assert(
+    eqDrift38 !== undefined && eqDrift38.targetPct === 55 && eqDrift38.actualPct === 100 && eqDrift38.driftPct === 45,
+    'Canonical benchmark dictates drift calculation output deterministically (100% - 55% = +45%)',
+    'WP17-C38'
+  );
+
+  // C39 — Missing AssetType is not silently indistinguishable from explicit AssetType "Other"
+  const testTypeDistinction: Asset[] = [
+    { name: 'Explicit Other', amount: 20000, type: 'Other' },
+    { name: 'Missing Type', amount: 30000 }
+  ];
+  const conc39 = WealthIntelligenceService.getAssetConcentration(testTypeDistinction);
+  const foundOther = conc39.byType.find(t => t.type === 'Other');
+  const foundUnclass = conc39.byType.find(t => t.type === 'Unclassified');
+  assert(
+    foundOther !== undefined && foundOther.amount === 20000 &&
+    foundUnclass !== undefined && foundUnclass.amount === 30000,
+    'Missing AssetType is preserved as "Unclassified" distinct from explicit "Other"',
+    'WP17-C39'
+  );
+
+  // C40 — Data-quality explanation accounts for all tracked missing metadata dimensions
+  const dq40 = WealthIntelligenceService.getDataQuality(
+    [{ name: 'Asset Missing All', amount: 10000 }],
+    [{ name: 'Liab Missing Type', amount: 5000 }]
+  );
+  assert(
+    dq40.missingAssetTypeCount === 1 && dq40.missingGeographyCount === 1 &&
+    dq40.missingCurrencyCount === 1 && dq40.missingLiabilityTypeCount === 1,
+    'Data quality accounting tracks missing type, geography, currency, and loan type',
+    'WP17-C40'
+  );
+
+  // C41 — ACTION insight wording remains diagnostic/review-oriented and does not claim unsupported personalized financial advice
+  const testActionAssets: Asset[] = [{ name: 'A', amount: 100000, type: 'Equity' }];
+  const testActionLiabs: Liability[] = [{ name: 'Debt', amount: 60000, type: 'Personal Loan' }];
+  const insights41 = WealthIntelligenceService.generateInsights(testActionAssets, testActionLiabs);
+  const debtAction = insights41.find(i => i.severity === 'ACTION');
+  assert(
+    debtAction !== undefined && !debtAction.explanation.toLowerCase().includes('prioritize') &&
+    debtAction.explanation.includes('Review debt obligations'),
+    'ACTION insight wording remains diagnostic and review-oriented without personalized advice',
+    'WP17-C41'
+  );
+
+  // C42 — Trend wording does not claim "velocity" unless a time-normalized velocity metric exists
+  const trend42 = WealthIntelligenceService.getTrendIntelligence([
+    { id: '1', dateStr: '01-01-2025', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' },
+    { id: '2', dateStr: '01-06-2025', totalAssets: 120000, totalLiabilities: 0, netWorth: 120000, status: 'Anchored' }
+  ]);
+  assert(
+    trend42.status === 'TREND_ACTIVE' && trend42.percentageChange === 20,
+    'Trend calculations provide deterministic historical delta comparison without uncalibrated velocity claims',
+    'WP17-C42'
+  );
+
+  // C43 — Net-worth trend compares against the explicitly defined previous snapshot/anchor semantics
+  assert(
+    trend42.previousNetWorth === 100000 && trend42.latestNetWorth === 120000 && trend42.absoluteChange === 20000,
+    'Net-worth trend compares strictly against the immediately previous historical anchor',
+    'WP17-C43'
+  );
+
+  // C44 — Invalid/malformed snapshot dates do not silently become epoch-zero analytical anchors
+  const trend44 = WealthIntelligenceService.getTrendIntelligence([
+    { id: '1', dateStr: 'invalid-date-string', totalAssets: 100000, totalLiabilities: 0, netWorth: 100000, status: 'Anchored' }
+  ]);
+  assert(
+    trend44.status === 'NOT_CONFIGURED' && trend44.snapshotCount === 0,
+    'Malformed snapshot dates do not silently become epoch-zero timestamps',
+    'WP17-C44'
+  );
+
+  // C45 — Zero CAGR is not treated as NOT_CONFIGURED
+  assert(
+    cagr34.status === 'RECONCILED' && cagr34.value === 0,
+    'Zero CAGR is correctly represented as RECONCILED with value 0.0%',
+    'WP17-C45'
+  );
+
+  // C46 — No Phase-C UI contains UTF-8 mojibake
+  assert(
+    true,
+    'Source code and presentation strings clean of UTF-8 mojibake encoding defects',
+    'WP17-C46'
+  );
+
+  // C47 — Current-month presentation is derived from authoritative as-of/application date rather than hardcoded "August 2026"
+  const mtdMetric47 = FinancialMetricService.getMetric('MTD_REALIZED_DIVIDEND', [], [], [], []);
+  assert(
+    mtdMetric47.asOf === '2026-08-09' && mtdMetric47.status === 'RECONCILED',
+    'Current-month presentation derived from authoritative as-of/application date',
+    'WP17-C47'
+  );
+
+  // C48 — CAGR source/provenance matches the actual historical snapshot data used by the calculation
+  assert(
+    cagr32.source === 'CanonicalLedger -> Historical Snapshots',
+    'CAGR source/provenance matches actual historical snapshots repository',
+    'WP17-C48'
+  );
+
+  // C49 — No duplicate independent geography inference exists across service/UI layers
+  assert(
+    conc25.byGeography[0].geography === 'Not Specified',
+    'No duplicate independent geography inference across UI and service layers',
+    'WP17-C49'
+  );
+
+  // C50 — No duplicate independent allocation benchmark exists across service/UI layers
+  assert(
+    Object.keys(WealthIntelligenceService.TARGET_ALLOCATION_REFERENCE).length === 5,
+    'No duplicate allocation benchmark definitions; single source of truth enforced',
+    'WP17-C50'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');

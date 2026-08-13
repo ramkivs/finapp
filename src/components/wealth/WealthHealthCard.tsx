@@ -2,7 +2,7 @@ import React from 'react';
 import { Asset, Liability, NetWorthSnapshot } from '../../domain/types';
 import { WealthIntelligenceService } from '../../services/WealthIntelligenceService';
 import { CurrencyValue } from '../CurrencyValue';
-import { ShieldCheck, AlertTriangle, Activity, Database } from 'lucide-react';
+import { Activity } from 'lucide-react';
 
 interface Props {
   assets: Asset[];

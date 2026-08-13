@@ -45,8 +45,8 @@ export const AddAssetModal: React.FC<Props> = ({ isOpen, onClose }) => {
       amount: Number(amount),
       type: selectedType,
       tag: tag || undefined,
-      currency: currency || 'INR',
-      geography
+      currency: currency || undefined,
+      geography: geography || undefined
     });
     setName('');
     setAmount('');

@@ -20,7 +20,8 @@ export class FinancialQueries {
     const transactions = repository.transactions.findAllSync();
     const assets = repository.assets.findAllSync();
     const liabilities = repository.liabilities.findAllSync();
-    return FinancialMetricService.getMetric(metricName, transactions, assets, liabilities);
+    const snapshots = repository.snapshots.findAllSync();
+    return FinancialMetricService.getMetric(metricName, transactions, assets, liabilities, snapshots);
   }
 
   static getSeries(seriesName: string): FinancialSeries | null {
