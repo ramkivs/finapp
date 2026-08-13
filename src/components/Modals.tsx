@@ -8,9 +8,12 @@ interface ModalProps {
 }
 
 export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
+  const accounts = useCanonicalLedger(s => s.accounts);
+  const defaultAcc = accounts.length > 0 ? accounts[0].name : 'HDFC Bank (...4921)';
+
   const [ticker, setTicker] = useState('ITC Limited');
   const [amount, setAmount] = useState(2100);
-  const [account, setAccount] = useState('HDFC Bank (...4921)');
+  const [account, setAccount] = useState(defaultAcc);
   const [type, setType] = useState('DIVIDEND');
   const [notes, setNotes] = useState('Quarterly Interim Dividend');
 
@@ -38,7 +41,7 @@ export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
             <select
               value={type}
               onChange={e => setType(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-medium"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white"
             >
               <option value="DIVIDEND">Dividend (Realized Cash Credit)</option>
               <option value="SALARY">Salary</option>
@@ -51,7 +54,7 @@ export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={ticker}
               onChange={e => setTicker(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -60,20 +63,30 @@ export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="number"
               value={amount}
               onChange={e => setAmount(Number(e.target.value))}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Credited Bank Account</label>
-            <select
-              value={account}
-              onChange={e => setAccount(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-            >
-              <option value="HDFC Bank (...4921)">HDFC Bank (...4921)</option>
-              <option value="SBI Bank (...1209)">SBI Bank (...1209)</option>
-              <option value="ICICI Bank (...8834)">ICICI Bank (...8834)</option>
-            </select>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Credited Account</label>
+            {accounts.length > 0 ? (
+              <select
+                value={account}
+                onChange={e => setAccount(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              >
+                {accounts.map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={account}
+                onChange={e => setAccount(e.target.value)}
+                placeholder="e.g. HDFC Bank (...4921)"
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Notes / Provenance</label>
@@ -81,7 +94,7 @@ export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
           </div>
         </div>
@@ -105,8 +118,12 @@ export const IncomeModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 };
 
 export const ExpenseModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
+  const accounts = useCanonicalLedger(s => s.accounts);
+  const defaultAcc = accounts.length > 0 ? accounts[0].name : 'HDFC Bank (...4921)';
+
   const [title, setTitle] = useState('Swiggy Food Delivery');
   const [amount, setAmount] = useState(1450);
+  const [account, setAccount] = useState(defaultAcc);
   const [category, setCategory] = useState('DINING');
 
   const addExpense = useCanonicalLedger(s => s.addExpense);
@@ -114,7 +131,7 @@ export const ExpenseModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const handleSave = () => {
-    addExpense(title, Number(amount), 'HDFC Bank (...4921)', category);
+    addExpense(title, Number(amount), account, category);
     onClose();
   };
 
@@ -134,7 +151,7 @@ export const ExpenseModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -143,19 +160,47 @@ export const ExpenseModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="number"
               value={amount}
               onChange={e => setAmount(Number(e.target.value))}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Debited Account</label>
+            {accounts.length > 0 ? (
+              <select
+                value={account}
+                onChange={e => setAccount(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              >
+                {accounts.map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={account}
+                onChange={e => setAccount(e.target.value)}
+                placeholder="e.g. HDFC Bank (...4921)"
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Category</label>
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-medium"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white"
             >
               <option value="DINING">Dining & Food</option>
+              <option value="GROCERIES">Groceries</option>
+              <option value="SHOPPING">Shopping</option>
               <option value="SUBSCRIPTION">Subscriptions & OTT</option>
-              <option value="HOUSING">Housing & Rent EMIs</option>
+              <option value="HOUSING">Housing & Rent</option>
+              <option value="UTILITY">Utilities</option>
+              <option value="TRANSPORT">Transport</option>
+              <option value="INVESTMENT">Investment</option>
+              <option value="OTHER">Other Expense</option>
             </select>
           </div>
         </div>
@@ -179,8 +224,12 @@ export const ExpenseModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 };
 
 export const TransferModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
-  const [source, setSource] = useState('HDFC Bank (...4921)');
-  const [dest, setDest] = useState('Zerodha Trading Account');
+  const accounts = useCanonicalLedger(s => s.accounts);
+  const defaultSrc = accounts.length > 0 ? accounts[0].name : 'HDFC Bank (...4921)';
+  const defaultDest = accounts.length > 1 ? accounts[1].name : 'Zerodha Trading Account';
+
+  const [source, setSource] = useState(defaultSrc);
+  const [dest, setDest] = useState(defaultDest);
   const [amount, setAmount] = useState(50000);
 
   const addTransfer = useCanonicalLedger(s => s.addTransfer);
@@ -204,25 +253,45 @@ export const TransferModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Source Account (Debit)</label>
-            <select
-              value={source}
-              onChange={e => setSource(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-            >
-              <option value="HDFC Bank (...4921)">HDFC Bank (...4921)</option>
-              <option value="SBI Bank (...1209)">SBI Bank (...1209)</option>
-            </select>
+            {accounts.length > 0 ? (
+              <select
+                value={source}
+                onChange={e => setSource(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              >
+                {accounts.map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={source}
+                onChange={e => setSource(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Destination Account (Credit)</label>
-            <select
-              value={dest}
-              onChange={e => setDest(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
-            >
-              <option value="Zerodha Trading Account">Zerodha Trading Account</option>
-              <option value="ICICI Bank (...8834)">ICICI Bank (...8834)</option>
-            </select>
+            {accounts.length > 0 ? (
+              <select
+                value={dest}
+                onChange={e => setDest(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              >
+                {accounts.map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={dest}
+                onChange={e => setDest(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Amount (₹)</label>
@@ -230,7 +299,7 @@ export const TransferModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               type="number"
               value={amount}
               onChange={e => setAmount(Number(e.target.value))}
-              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
             />
           </div>
         </div>
