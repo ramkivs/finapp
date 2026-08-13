@@ -180,14 +180,139 @@ export interface SnapshotRepository {
 
 type SnapshotRepositoryAllSync = NetWorthSnapshot[];
 
+export interface AccountRepository {
+  findAll(): Promise<Account[]>;
+  findAllSync(): Account[];
+  add(account: Account): Promise<void>;
+  remove(id: string): Promise<void>;
+}
+
+export interface BudgetRepository {
+  findForMonth(monthStr: string): Promise<MonthlyBudget | null>;
+  findForMonthSync(monthStr: string): MonthlyBudget | null;
+  findAll(): Promise<MonthlyBudget[]>;
+  findAllSync(): MonthlyBudget[];
+  save(budget: MonthlyBudget): Promise<void>;
+}
+
 export interface FinancialRepositoryPort {
   transactions: TransactionRepository;
   assets: AssetRepository;
   liabilities: LiabilityRepository;
   snapshots: SnapshotRepository;
+  accounts: AccountRepository;
+  budgets: BudgetRepository;
   clearLocalData(): Promise<void> | void;
   loadDemoData(): Promise<void> | void;
   initialize(): Promise<void> | void;
+}
+
+/* =========================================================================
+ * WP-18: Money Domain Models (Accounts, Monthly Budgets, Category Mappings)
+ * ========================================================================= */
+
+export type ControlledAccountType =
+  | 'Bank'
+  | 'Credit Card'
+  | 'Cash'
+  | 'Wallet'
+  | 'Broker'
+  | 'Other';
+
+export interface Account {
+  id: string;
+  name: string; // Unique within Account registry
+  type: ControlledAccountType;
+  institution?: string;
+  lastFourDigits?: string;
+  openingBalance: number;
+  currency?: string; // Descriptive metadata only; no 'INR' default
+  asOfDate?: string;
+  notes?: string;
+}
+
+export interface MonthlyBudget {
+  id: string;
+  monthStr: string; // "YYYY-MM" e.g. "2026-08"
+  allocations: Record<string, number>; // category -> budgeted amount
+  totalBudget: number;
+  updatedAt?: string;
+}
+
+export const BUDGET_CATEGORY_FAMILIES = [
+  'Housing',
+  'Food & Dining',
+  'Groceries',
+  'Transport',
+  'Healthcare',
+  'Education',
+  'Insurance',
+  'EMI & Loans',
+  'Entertainment',
+  'Utilities',
+  'Shopping',
+  'Investment',
+  'Travel & Vacations',
+  'Subscriptions',
+  'Personal Care',
+  'Credit Card Payment',
+  'Taxes',
+  'Cash Withdrawal',
+  'Childcare',
+  'Other Expense',
+  'New Category'
+] as const;
+
+export type BudgetCategoryFamily = typeof BUDGET_CATEGORY_FAMILIES[number];
+
+/** Deterministic transaction-category to budget-category mapping */
+export const TRANSACTION_TO_BUDGET_CATEGORY_MAP: Record<string, BudgetCategoryFamily> = {
+  'DINING': 'Food & Dining',
+  'FOOD': 'Food & Dining',
+  'GROCERIES': 'Groceries',
+  'GROCERY': 'Groceries',
+  'HOUSING': 'Housing',
+  'RENT': 'Housing',
+  'MORTGAGE': 'Housing',
+  'SUBSCRIPTION': 'Subscriptions',
+  'SUBSCRIPTIONS': 'Subscriptions',
+  'OTT': 'Subscriptions',
+  'SHOPPING': 'Shopping',
+  'UTILITY': 'Utilities',
+  'UTILITIES': 'Utilities',
+  'ELECTRICITY': 'Utilities',
+  'WATER': 'Utilities',
+  'TRANSPORT': 'Transport',
+  'FUEL': 'Transport',
+  'CAB': 'Transport',
+  'TRAVEL': 'Travel & Vacations',
+  'VACATION': 'Travel & Vacations',
+  'HEALTHCARE': 'Healthcare',
+  'MEDICAL': 'Healthcare',
+  'EDUCATION': 'Education',
+  'TUITION': 'Education',
+  'INSURANCE': 'Insurance',
+  'POLICY': 'Insurance',
+  'EMI': 'EMI & Loans',
+  'LOAN': 'EMI & Loans',
+  'ENTERTAINMENT': 'Entertainment',
+  'MOVIES': 'Entertainment',
+  'PERSONAL_CARE': 'Personal Care',
+  'CREDIT_CARD_PAYMENT': 'Credit Card Payment',
+  'TAXES': 'Taxes',
+  'TAX': 'Taxes',
+  'CASH_WITHDRAWAL': 'Cash Withdrawal',
+  'ATM': 'Cash Withdrawal',
+  'CHILDCARE': 'Childcare',
+  'INVESTMENT': 'Investment',
+  'OTHER': 'Other Expense',
+  'OTHER_EXPENSE': 'Other Expense'
+};
+
+export function mapTransactionCategoryToBudget(txCategory?: string): BudgetCategoryFamily {
+  if (!txCategory) return 'Other Expense';
+  const norm = txCategory.toUpperCase().trim();
+  return TRANSACTION_TO_BUDGET_CATEGORY_MAP[norm] || 'Other Expense';
 }
 
 /* =========================================================================

@@ -1,6 +1,15 @@
 import { FinancialCommands } from '../application/commands';
 import { create } from 'zustand';
-import { APP_AS_OF_DATE, Transaction, Asset, Liability, NetWorthSnapshot } from '../domain/types';
+import {
+  APP_AS_OF_DATE,
+  Transaction,
+  Asset,
+  Liability,
+  NetWorthSnapshot,
+  Account,
+  ControlledAccountType,
+  MonthlyBudget
+} from '../domain/types';
 import { formatDisplayDate, DateRangeService } from '../services/DateRangeService';
 import { Sha256Service } from '../services/Sha256Service';
 import { repository } from '../repositories';
@@ -10,6 +19,8 @@ interface LedgerState {
   assets: Asset[];
   liabilities: Liability[];
   snapshots: NetWorthSnapshot[];
+  accounts: Account[];
+  budgets: MonthlyBudget[];
   privacyMasked: boolean;
   filterType: 'Expense' | 'Income' | 'Transfer' | 'All';
   dateRange: string;
@@ -29,6 +40,8 @@ interface LedgerState {
     assets: Asset[];
     liabilities: Liability[];
     snapshots: NetWorthSnapshot[];
+    accounts?: Account[];
+    budgets?: MonthlyBudget[];
   }) => void;
 
   initialize: () => Promise<void>;
@@ -45,6 +58,20 @@ interface LedgerState {
   addPastSnapshot: (params: { dateStr: string; totalAssets: number; totalLiabilities: number; label?: string }) => void;
   captureSnapshot: (label?: string) => void;
   commitImportedRows: (validRows?: Transaction[]) => { appended: number; duplicates: number };
+
+  // Account & Budget Actions (WP-18)
+  addAccount: (params: {
+    name: string;
+    type: ControlledAccountType;
+    institution?: string;
+    lastFourDigits?: string;
+    openingBalance: number;
+    currency?: string;
+    asOfDate?: string;
+    notes?: string;
+  }) => void;
+  removeAccount: (id: string) => void;
+  saveMonthlyBudget: (monthStr: string, allocations: Record<string, number>) => void;
 
   // Queries
   getFilteredTransactions: (params?: {
@@ -67,6 +94,8 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
   assets: [],
   liabilities: [],
   snapshots: [],
+  accounts: [],
+  budgets: [],
   privacyMasked: typeof window !== 'undefined' ? localStorage.getItem('finapp.privacy.masked') === 'true' : false,
   filterType: 'Expense',
   dateRange: 'This Month',
@@ -94,7 +123,9 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
       transactions: state.transactions,
       assets: state.assets,
       liabilities: state.liabilities,
-      snapshots: state.snapshots
+      snapshots: state.snapshots,
+      accounts: state.accounts || [],
+      budgets: state.budgets || []
     });
   },
 
@@ -227,6 +258,18 @@ export const useCanonicalLedger = create<LedgerState>((set, get) => ({
     }
 
     return { appended, duplicates };
+  },
+
+  addAccount: (params) => {
+    FinancialCommands.recordAccount(params);
+  },
+
+  removeAccount: (id) => {
+    repository.accounts.remove(id);
+  },
+
+  saveMonthlyBudget: (monthStr, allocations) => {
+    FinancialCommands.saveMonthlyBudget(monthStr, allocations);
   },
 
   getFilteredTransactions: (params) => {

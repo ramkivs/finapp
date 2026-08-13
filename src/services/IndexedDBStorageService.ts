@@ -1,13 +1,15 @@
-import { Transaction, Asset, Liability, NetWorthSnapshot } from '../domain/types';
+import { Transaction, Asset, Liability, NetWorthSnapshot, Account, MonthlyBudget } from '../domain/types';
 
 const DB_NAME = 'finboom_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface StoredLedgerState {
   transactions: Transaction[];
   assets: Asset[];
   liabilities: Liability[];
   snapshots: NetWorthSnapshot[];
+  accounts: Account[];
+  budgets: MonthlyBudget[];
   hasLoadedOnce: boolean;
 }
 
@@ -17,6 +19,8 @@ export class IndexedDBStorageService {
     assets: [],
     liabilities: [],
     snapshots: [],
+    accounts: [],
+    budgets: [],
     hasLoadedOnce: false
   };
 
@@ -44,6 +48,8 @@ export class IndexedDBStorageService {
         if (!db.objectStoreNames.contains('assets')) db.createObjectStore('assets', { keyPath: 'name' });
         if (!db.objectStoreNames.contains('liabilities')) db.createObjectStore('liabilities', { keyPath: 'name' });
         if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('accounts')) db.createObjectStore('accounts', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('budgets')) db.createObjectStore('budgets', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
       };
     });
@@ -57,24 +63,35 @@ export class IndexedDBStorageService {
           assets: [...this.nodeFallbackStore.assets],
           liabilities: [...this.nodeFallbackStore.liabilities],
           snapshots: [...this.nodeFallbackStore.snapshots],
+          accounts: [...this.nodeFallbackStore.accounts],
+          budgets: [...this.nodeFallbackStore.budgets],
           hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
         };
       }
 
       try {
         const db = await this.getDB();
-        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readonly');
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+          .filter(name => db.objectStoreNames.contains(name));
+
+        const tx = db.transaction(storeNames, 'readonly');
         const getStore = (name: string) => new Promise<any[]>((resolve) => {
+          if (!db.objectStoreNames.contains(name)) {
+            resolve([]);
+            return;
+          }
           const req = tx.objectStore(name).getAll();
           req.onsuccess = () => resolve(req.result || []);
           req.onerror = () => resolve([]);
         });
 
-        const [txs, assets, liabs, snaps, meta] = await Promise.all([
+        const [txs, assets, liabs, snaps, accounts, budgets, meta] = await Promise.all([
           getStore('transactions'),
           getStore('assets'),
           getStore('liabilities'),
           getStore('snapshots'),
+          getStore('accounts'),
+          getStore('budgets'),
           getStore('meta')
         ]);
 
@@ -85,6 +102,8 @@ export class IndexedDBStorageService {
           assets: assets as Asset[],
           liabilities: liabs as Liability[],
           snapshots: snaps as NetWorthSnapshot[],
+          accounts: accounts as Account[],
+          budgets: budgets as MonthlyBudget[],
           hasLoadedOnce: !!hasLoadedMeta?.value
         };
       } catch (e) {
@@ -93,6 +112,8 @@ export class IndexedDBStorageService {
           assets: [...this.nodeFallbackStore.assets],
           liabilities: [...this.nodeFallbackStore.liabilities],
           snapshots: [...this.nodeFallbackStore.snapshots],
+          accounts: [...this.nodeFallbackStore.accounts],
+          budgets: [...this.nodeFallbackStore.budgets],
           hasLoadedOnce: this.nodeFallbackStore.hasLoadedOnce
         };
       }
@@ -104,6 +125,8 @@ export class IndexedDBStorageService {
     assets: Asset[];
     liabilities: Liability[];
     snapshots: NetWorthSnapshot[];
+    accounts?: Account[];
+    budgets?: MonthlyBudget[];
   }): Promise<void> {
     return this.enqueueSave(async () => {
       if (this.simulateFailureOnce) {
@@ -111,12 +134,17 @@ export class IndexedDBStorageService {
         throw new Error('Simulated IndexedDB persistence failure');
       }
 
+      const accounts = state.accounts || [];
+      const budgets = state.budgets || [];
+
       if (typeof window === 'undefined' || !window.indexedDB) {
         this.nodeFallbackStore = {
           transactions: [...state.transactions],
           assets: [...state.assets],
           liabilities: [...state.liabilities],
           snapshots: [...state.snapshots],
+          accounts: [...accounts],
+          budgets: [...budgets],
           hasLoadedOnce: true
         };
         return;
@@ -124,21 +152,30 @@ export class IndexedDBStorageService {
 
       try {
         const db = await this.getDB();
-        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+          .filter(name => db.objectStoreNames.contains(name));
+
+        const tx = db.transaction(storeNames, 'readwrite');
 
         const clearAndPut = (name: string, items: any[]) => {
-          const store = tx.objectStore(name);
-          store.clear();
-          items.forEach(item => store.put(item));
+          if (db.objectStoreNames.contains(name)) {
+            const store = tx.objectStore(name);
+            store.clear();
+            items.forEach(item => store.put(item));
+          }
         };
 
         clearAndPut('transactions', state.transactions);
         clearAndPut('assets', state.assets);
         clearAndPut('liabilities', state.liabilities);
         clearAndPut('snapshots', state.snapshots);
+        clearAndPut('accounts', accounts);
+        clearAndPut('budgets', budgets);
 
-        const metaStore = tx.objectStore('meta');
-        metaStore.put({ key: 'hasLoadedOnce', value: true });
+        if (db.objectStoreNames.contains('meta')) {
+          const metaStore = tx.objectStore('meta');
+          metaStore.put({ key: 'hasLoadedOnce', value: true });
+        }
 
         await new Promise<void>((resolve, reject) => {
           tx.oncomplete = () => {
@@ -156,6 +193,8 @@ export class IndexedDBStorageService {
           assets: [...state.assets],
           liabilities: [...state.liabilities],
           snapshots: [...state.snapshots],
+          accounts: [...accounts],
+          budgets: [...budgets],
           hasLoadedOnce: true
         };
       }
@@ -175,6 +214,8 @@ export class IndexedDBStorageService {
           assets: [],
           liabilities: [],
           snapshots: [],
+          accounts: [],
+          budgets: [],
           hasLoadedOnce: true
         };
         return;
@@ -182,12 +223,18 @@ export class IndexedDBStorageService {
 
       try {
         const db = await this.getDB();
-        const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readwrite');
-        tx.objectStore('transactions').clear();
-        tx.objectStore('assets').clear();
-        tx.objectStore('liabilities').clear();
-        tx.objectStore('snapshots').clear();
-        tx.objectStore('meta').put({ key: 'hasLoadedOnce', value: true });
+        const storeNames = ['transactions', 'assets', 'liabilities', 'snapshots', 'accounts', 'budgets', 'meta']
+          .filter(name => db.objectStoreNames.contains(name));
+
+        const tx = db.transaction(storeNames, 'readwrite');
+        storeNames.forEach(name => {
+          if (name !== 'meta') {
+            tx.objectStore(name).clear();
+          }
+        });
+        if (db.objectStoreNames.contains('meta')) {
+          tx.objectStore('meta').put({ key: 'hasLoadedOnce', value: true });
+        }
         await new Promise<void>((resolve, reject) => {
           tx.oncomplete = () => {
             db.close();
@@ -204,6 +251,8 @@ export class IndexedDBStorageService {
           assets: [],
           liabilities: [],
           snapshots: [],
+          accounts: [],
+          budgets: [],
           hasLoadedOnce: true
         };
       }

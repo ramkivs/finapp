@@ -1,7 +1,19 @@
 import { repository } from '../repositories';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
 import { ImportPipelineService } from '../services/ImportPipelineService';
-import { Transaction, APP_AS_OF_DATE, AssetType, LiabilityType, GeographyType, NetWorthSnapshot } from '../domain/types';
+import {
+  Transaction,
+  APP_AS_OF_DATE,
+  AssetType,
+  LiabilityType,
+  GeographyType,
+  NetWorthSnapshot,
+  Account,
+  ControlledAccountType,
+  MonthlyBudget,
+  mapTransactionCategoryToBudget,
+  BUDGET_CATEGORY_FAMILIES
+} from '../domain/types';
 import { formatDisplayDate } from '../services/DateRangeService';
 
 const SAMPLE_DEFAULT_CSV = `Date,Title,Narration,Amount,Type,Account
@@ -166,6 +178,141 @@ export class FinancialCommands {
     };
   }
 
+  /* =========================================================================
+   * WP-18: Account Commands
+   * ========================================================================= */
+
+  static recordAccount(params: {
+    name: string;
+    type: ControlledAccountType;
+    institution?: string;
+    lastFourDigits?: string;
+    openingBalance: number;
+    currency?: string;
+    asOfDate?: string;
+    notes?: string;
+  }): Account {
+    if (!params.name || !params.name.trim()) {
+      throw new Error('Account name is required.');
+    }
+
+    const account: Account = {
+      id: 'acc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name: params.name.trim(),
+      type: params.type,
+      institution: params.institution?.trim() || undefined,
+      lastFourDigits: params.lastFourDigits?.trim() || undefined,
+      openingBalance: Number(params.openingBalance) || 0,
+      currency: params.currency?.trim() || undefined,
+      asOfDate: params.asOfDate || APP_AS_OF_DATE,
+      notes: params.notes?.trim() || undefined
+    };
+
+    repository.accounts.add(account);
+    return account;
+  }
+
+  static deleteAccount(id: string): void {
+    repository.accounts.remove(id);
+  }
+
+  /* =========================================================================
+   * WP-18: Monthly Budget Commands
+   * ========================================================================= */
+
+  static saveMonthlyBudget(monthStr: string, allocations: Record<string, number>): MonthlyBudget {
+    const cleanedAllocations: Record<string, number> = {};
+    let totalBudget = 0;
+
+    for (const [cat, amt] of Object.entries(allocations)) {
+      const num = Number(amt) || 0;
+      if (num > 0) {
+        cleanedAllocations[cat] = num;
+        totalBudget += num;
+      }
+    }
+
+    const budget: MonthlyBudget = {
+      id: 'budget-' + monthStr,
+      monthStr,
+      allocations: cleanedAllocations,
+      totalBudget,
+      updatedAt: new Date().toISOString()
+    };
+
+    repository.budgets.save(budget);
+    return budget;
+  }
+
+  /**
+   * Deterministic Trailing-3-Full-Month Expense Average Auto-Suggest.
+   * SuggestedBudget(C) = round((Expense_M1 + Expense_M2 + Expense_M3) / 3)
+   */
+  static autoSuggestBudget(targetMonthStr: string): { allocations: Record<string, number>; totalBudget: number } {
+    const [yearStr, monthStr] = targetMonthStr.split('-');
+    const targetYear = parseInt(yearStr, 10);
+    const targetMonth = parseInt(monthStr, 10);
+
+    // Compute the 3 preceding calendar months (M-1, M-2, M-3)
+    const precedingMonths: string[] = [];
+    for (let i = 1; i <= 3; i++) {
+      let m = targetMonth - i;
+      let y = targetYear;
+      while (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
+      precedingMonths.push(`${y}-${String(m).padStart(2, '0')}`);
+    }
+
+    const allTxs = repository.transactions.findAllSync();
+    const categoryTotals: Record<string, number> = {};
+
+    for (const tx of allTxs) {
+      if (tx.type !== 'Expense') continue;
+      const txMonth = tx.date.slice(0, 7); // "YYYY-MM"
+      if (precedingMonths.includes(txMonth)) {
+        const budgetCat = mapTransactionCategoryToBudget(tx.category);
+        categoryTotals[budgetCat] = (categoryTotals[budgetCat] || 0) + tx.amount;
+      }
+    }
+
+    const allocations: Record<string, number> = {};
+    let totalBudget = 0;
+
+    for (const [cat, totalAmt] of Object.entries(categoryTotals)) {
+      const avg = Math.round(totalAmt / 3);
+      if (avg > 0) {
+        allocations[cat] = avg;
+        totalBudget += avg;
+      }
+    }
+
+    return { allocations, totalBudget };
+  }
+
+  /**
+   * Copy Budget Allocations from Previous Month ($M-1$).
+   */
+  static copyBudgetFromPreviousMonth(targetMonthStr: string, sourceMonthStr?: string): MonthlyBudget | null {
+    let srcMonth = sourceMonthStr;
+    if (!srcMonth) {
+      const [yearStr, monthStr] = targetMonthStr.split('-');
+      let m = parseInt(monthStr, 10) - 1;
+      let y = parseInt(yearStr, 10);
+      if (m <= 0) {
+        m = 12;
+        y -= 1;
+      }
+      srcMonth = `${y}-${String(m).padStart(2, '0')}`;
+    }
+
+    const srcBudget = repository.budgets.findForMonthSync(srcMonth);
+    if (!srcBudget) return null;
+
+    return this.saveMonthlyBudget(targetMonthStr, { ...srcBudget.allocations });
+  }
+
   static async clearLocalDevelopmentData(): Promise<void> {
     await repository.clearLocalData();
   }
@@ -177,4 +324,8 @@ export class FinancialCommands {
   static togglePrivacy(): void {
     useCanonicalLedger.getState().togglePrivacy();
   }
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).FinancialCommands = FinancialCommands;
 }

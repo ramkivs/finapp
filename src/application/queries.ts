@@ -1,6 +1,7 @@
 import { repository } from '../repositories';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { WealthIntelligenceService } from '../services/WealthIntelligenceService';
+import { DateRangeService } from '../services/DateRangeService';
 import {
   FinancialMetric,
   FinancialSeries,
@@ -12,8 +13,24 @@ import {
   LiabilityDiagnostics,
   NetWorthTrendIntelligence,
   WealthInsight,
-  WealthDataQuality
+  WealthDataQuality,
+  Account,
+  MonthlyBudget,
+  APP_AS_OF_DATE,
+  mapTransactionCategoryToBudget
 } from '../domain/types';
+
+export interface MoneyInsightsData {
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  totalInvested: number; // Strictly transactions with category === 'INVESTMENT'
+  brokerageFunding: number; // Transfers to brokerage accounts (tracked separately from investment)
+  savingsRate: number;
+  status: 'RECONCILED' | 'NOT_CONFIGURED';
+  expenseCategoryBreakdown: Array<{ category: string; amount: number; pct: number }>;
+  monthlyTrends: Array<{ month: string; income: number; expense: number; net: number }>;
+}
 
 export class FinancialQueries {
   static getMetric(metricName: string): FinancialMetric {
@@ -41,6 +58,91 @@ export class FinancialQueries {
 
   static getSnapshots(): NetWorthSnapshot[] {
     return repository.snapshots.findAllSync();
+  }
+
+  /* WP-18: Account & Budget Queries */
+  static getAccounts(): Account[] {
+    return repository.accounts.findAllSync();
+  }
+
+  static getBudgetForMonth(monthStr: string): MonthlyBudget | null {
+    return repository.budgets.findForMonthSync(monthStr);
+  }
+
+  static getBudgets(): MonthlyBudget[] {
+    return repository.budgets.findAllSync();
+  }
+
+  static getMoneyInsights(dateRange: string = 'This Month', customStart?: string, customEnd?: string): MoneyInsightsData {
+    const bounds = DateRangeService.getBounds(dateRange, APP_AS_OF_DATE, customStart, customEnd);
+    const allTxs = repository.transactions.findAllSync();
+    const periodTxs = allTxs.filter(t => t.date >= bounds.startDate && t.date <= bounds.endDate);
+
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalInvested = 0;
+    let brokerageFunding = 0;
+    const catTotals: Record<string, number> = {};
+
+    for (const t of periodTxs) {
+      if (t.type === 'Income') {
+        totalIncome += t.amount;
+      } else if (t.type === 'Expense') {
+        totalExpenses += t.amount;
+        const bCat = mapTransactionCategoryToBudget(t.category);
+        catTotals[bCat] = (catTotals[bCat] || 0) + t.amount;
+        if (t.category === 'INVESTMENT') {
+          totalInvested += t.amount;
+        }
+      } else if (t.type === 'Transfer') {
+        if (t.title.toLowerCase().includes('brokerage') || t.title.toLowerCase().includes('zerodha') || t.title.toLowerCase().includes('invest')) {
+          brokerageFunding += t.amount;
+        }
+      }
+    }
+
+    const netCashFlow = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+    const status: 'RECONCILED' | 'NOT_CONFIGURED' = periodTxs.length > 0 ? 'RECONCILED' : 'NOT_CONFIGURED';
+
+    const expenseCategoryBreakdown = Object.entries(catTotals)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        pct: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Compute monthly trends (trailing 6 months)
+    const monthMap: Record<string, { income: number; expense: number }> = {};
+    for (const t of allTxs) {
+      const ym = t.date.slice(0, 7);
+      if (!monthMap[ym]) monthMap[ym] = { income: 0, expense: 0 };
+      if (t.type === 'Income') monthMap[ym].income += t.amount;
+      if (t.type === 'Expense') monthMap[ym].expense += t.amount;
+    }
+
+    const monthlyTrends = Object.entries(monthMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-6)
+      .map(([month, data]) => ({
+        month,
+        income: data.income,
+        expense: data.expense,
+        net: data.income - data.expense
+      }));
+
+    return {
+      totalIncome,
+      totalExpenses,
+      netCashFlow,
+      totalInvested,
+      brokerageFunding,
+      savingsRate,
+      status,
+      expenseCategoryBreakdown,
+      monthlyTrends
+    };
   }
 
   /* WP-17 Phase C: Wealth Intelligence Queries */
