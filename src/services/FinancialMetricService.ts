@@ -2,6 +2,8 @@ import { APP_AS_OF_DATE, FinancialMetric, FinancialSeries, Transaction, Asset, L
 import { DateRangeService } from './DateRangeService';
 import { DividendService } from './DividendService';
 import { WealthIntelligenceService } from './WealthIntelligenceService';
+import { EssentialsService } from './EssentialsService';
+import { repository } from '../repositories';
 
 export class FinancialMetricService {
   static getMetric(
@@ -120,22 +122,67 @@ export class FinancialMetricService {
       };
     } else if (metricName === 'NET_WORTH_CAGR') {
       return WealthIntelligenceService.calculateNetWorthCAGR(snapshots, asOfDateStr);
-    } else if (
-      metricName === 'EMERGENCY_FUND_COVERAGE' ||
-      metricName === 'ACTIVE_INSURANCE_POLICY_TOTAL' ||
-      metricName === 'SIP_COMMITMENT_MONTHLY' ||
-      metricName === 'EMERGENCY_FUND_GOAL'
-    ) {
+    } else if (metricName === 'EMERGENCY_FUND_COVERAGE') {
+      const accounts = repository.accounts.findAllSync();
+      const budgets = repository.budgets.findAllSync();
+      const profile = repository.profile.getSync();
+      const em = EssentialsService.calculateEmergencyFundAnalysis(assets, accounts, transactions, budgets, 6, profile);
       return {
-        metric: metricName,
-        value: 0,
+        metric: 'EMERGENCY_FUND_COVERAGE',
+        value: em.runwayMonths,
         currency: 'INR',
         asOf: asOfDateStr,
-        source: 'Unconfigured Domain Registry',
-        filters: {},
-        formula: '',
-        status: 'NOT_CONFIGURED',
-        displayLabel: 'Not configured (Authoritative domain model required)'
+        source: 'CanonicalLedger -> EssentialsService',
+        filters: { targetMonths: 6 },
+        formula: 'LiquidReserves / MonthlyEssentialExpenses',
+        status: em.status,
+        displayLabel: em.status === 'RECONCILED' ? `${em.runwayMonths} Months` : 'Not configured'
+      };
+    } else if (metricName === 'ACTIVE_INSURANCE_POLICY_TOTAL') {
+      const policies = repository.policies.findAllSync();
+      const activeTotal = EssentialsService.calculateActiveInsuranceTotal(policies);
+      const isConfigured = policies.length > 0;
+      return {
+        metric: 'ACTIVE_INSURANCE_POLICY_TOTAL',
+        value: activeTotal,
+        currency: 'INR',
+        asOf: asOfDateStr,
+        source: 'CanonicalLedger -> EssentialsService',
+        filters: { status: 'Active' },
+        formula: 'Sum(ActivePolicy.coverAmount)',
+        status: isConfigured ? 'RECONCILED' : 'NOT_CONFIGURED',
+        displayLabel: isConfigured ? `₹${activeTotal.toLocaleString('en-IN')}` : 'Not configured'
+      };
+    } else if (metricName === 'SIP_COMMITMENT_MONTHLY') {
+      const goals = repository.goals.findAllSync();
+      const sipTotal = EssentialsService.calculateMonthlySipCommitment(goals);
+      const isConfigured = goals.length > 0;
+      return {
+        metric: 'SIP_COMMITMENT_MONTHLY',
+        value: sipTotal,
+        currency: 'INR',
+        asOf: asOfDateStr,
+        source: 'CanonicalLedger -> EssentialsService',
+        filters: { status: 'In Progress' },
+        formula: 'Sum(InProgressGoal.monthlyContribution)',
+        status: isConfigured ? 'RECONCILED' : 'NOT_CONFIGURED',
+        displayLabel: isConfigured ? `₹${sipTotal.toLocaleString('en-IN')}` : 'Not configured'
+      };
+    } else if (metricName === 'EMERGENCY_FUND_GOAL') {
+      const accounts = repository.accounts.findAllSync();
+      const budgets = repository.budgets.findAllSync();
+      const profile = repository.profile.getSync();
+      const emGoal = EssentialsService.calculateEmergencyFundAnalysis(assets, accounts, transactions, budgets, 6, profile);
+      return {
+        metric: 'EMERGENCY_FUND_GOAL',
+        value: emGoal.targetAmount,
+        currency: 'INR',
+        asOf: asOfDateStr,
+        source: 'CanonicalLedger -> EssentialsService',
+        filters: { targetMonths: 6 },
+        formula: 'MonthlyEssentialExpenses * 6',
+        status: emGoal.status,
+        displayLabel: emGoal.status === 'RECONCILED' ? `₹${emGoal.targetAmount.toLocaleString('en-IN')}` : 'Not configured'
       };
     }
     return {

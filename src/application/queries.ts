@@ -1,6 +1,7 @@
 import { repository } from '../repositories';
 import { FinancialMetricService } from '../services/FinancialMetricService';
 import { WealthIntelligenceService } from '../services/WealthIntelligenceService';
+import { EssentialsService } from '../services/EssentialsService';
 import { DateRangeService } from '../services/DateRangeService';
 import {
   FinancialMetric,
@@ -16,6 +17,11 @@ import {
   WealthDataQuality,
   Account,
   MonthlyBudget,
+  InsurancePolicy,
+  FinancialGoal,
+  FinancialProfile,
+  EmergencyFundAnalysis,
+  HealthScoreBreakdown,
   APP_AS_OF_DATE,
   mapTransactionCategoryToBudget
 } from '../domain/types';
@@ -187,4 +193,54 @@ export class FinancialQueries {
     const snapshots = repository.snapshots.findAllSync();
     return WealthIntelligenceService.generateInsights(assets, liabilities, snapshots);
   }
+
+  /* =========================================================================
+   * WP-19: Essentials Queries
+   * ========================================================================= */
+
+  static getPolicies(): InsurancePolicy[] {
+    return repository.policies.findAllSync();
+  }
+
+  static getGoals(): FinancialGoal[] {
+    return repository.goals.findAllSync();
+  }
+
+  static getProfile(): FinancialProfile | null {
+    return repository.profile.getSync();
+  }
+
+  static getEmergencyFundAnalysis(targetMonths: number = 6): EmergencyFundAnalysis {
+    const assets = repository.assets.findAllSync();
+    const accounts = repository.accounts.findAllSync();
+    const transactions = repository.transactions.findAllSync();
+    const budgets = repository.budgets.findAllSync();
+    const profile = repository.profile.getSync();
+    return EssentialsService.calculateEmergencyFundAnalysis(assets, accounts, transactions, budgets, targetMonths, profile);
+  }
+
+  static getFinancialHealthScore(): HealthScoreBreakdown {
+    const emergencyAnalysis = this.getEmergencyFundAnalysis(6);
+    const assets = repository.assets.findAllSync();
+    const liabilities = repository.liabilities.findAllSync();
+    const totalAssets = assets.reduce((s, a) => s + a.amount, 0);
+    const totalDebt = liabilities.reduce((s, l) => s + l.amount, 0);
+    const policies = repository.policies.findAllSync();
+    const totalInsuranceCover = EssentialsService.calculateActiveInsuranceTotal(policies);
+    const profile = repository.profile.getSync();
+    const insights = this.getMoneyInsights('This Month');
+    return EssentialsService.calculateFinancialHealthScore({
+      emergencyAnalysis,
+      totalDebt,
+      totalAssets,
+      totalInsuranceCover,
+      policies,
+      profile,
+      savingsRate: insights.savingsRate
+    });
+  }
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).FinancialQueries = FinancialQueries;
 }

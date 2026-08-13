@@ -195,6 +195,26 @@ export interface BudgetRepository {
   save(budget: MonthlyBudget): Promise<void>;
 }
 
+export interface PolicyRepository {
+  findAll(): Promise<InsurancePolicy[]>;
+  findAllSync(): InsurancePolicy[];
+  add(policy: InsurancePolicy): Promise<void>;
+  remove(id: string): Promise<void>;
+}
+
+export interface GoalRepository {
+  findAll(): Promise<FinancialGoal[]>;
+  findAllSync(): FinancialGoal[];
+  add(goal: FinancialGoal): Promise<void>;
+  remove(id: string): Promise<void>;
+}
+
+export interface ProfileRepository {
+  get(): Promise<FinancialProfile | null>;
+  getSync(): FinancialProfile | null;
+  save(profile: FinancialProfile): Promise<void>;
+}
+
 export interface FinancialRepositoryPort {
   transactions: TransactionRepository;
   assets: AssetRepository;
@@ -202,6 +222,9 @@ export interface FinancialRepositoryPort {
   snapshots: SnapshotRepository;
   accounts: AccountRepository;
   budgets: BudgetRepository;
+  policies: PolicyRepository;
+  goals: GoalRepository;
+  profile: ProfileRepository;
   clearLocalData(): Promise<void> | void;
   loadDemoData(): Promise<void> | void;
   initialize(): Promise<void> | void;
@@ -408,4 +431,81 @@ export interface WealthDataQuality {
   missingCurrencyCount: number;
   missingLiabilityTypeCount: number;
   totalRecords: number;
+}
+
+/* =========================================================================
+   WP-19: ESSENTIALS DOMAIN TYPES & SCHEMAS
+   ========================================================================= */
+
+export type PolicyType = 'Term Life' | 'Health' | 'Motor' | 'Home' | 'Other';
+
+export interface InsurancePolicy {
+  id: string;
+  type: PolicyType;
+  provider: string;
+  policyNumber?: string;
+  coverAmount: number;
+  premiumAmount: number;
+  renewalDate?: string;
+  status: 'Active' | 'Lapsed' | 'Pending';
+  currency?: string; // Descriptive metadata only; preserves Not Specified
+  notes?: string;
+}
+
+export const GOAL_TEMPLATES = [
+  'Retirement',
+  'Emergency Buffer',
+  'Home Purchase',
+  'Education',
+  'Vacation',
+  'Vehicle',
+  'Wedding',
+  'Custom Milestone'
+] as const;
+
+export type GoalTemplateType = typeof GOAL_TEMPLATES[number];
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  template: GoalTemplateType;
+  targetAmount: number;
+  targetDate?: string;
+  currentSavedAmount: number;
+  monthlyContribution: number;
+  linkedCategory?: string;
+  status: 'In Progress' | 'Achieved' | 'Paused';
+  currency?: string; // Descriptive metadata only; preserves Not Specified
+  notes?: string;
+}
+
+export interface FinancialProfile {
+  id: string;
+  age?: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  savingsRate: number; // Percentage (e.g. 35 for 35%)
+  dependents?: number;
+  targetEmergencyMonths?: number;
+  updatedAt: string;
+}
+
+export interface EmergencyFundAnalysis {
+  liquidReserves: number;
+  monthlyEssentialExpenses: number;
+  runwayMonths: number;
+  targetMonths: number;
+  targetAmount: number;
+  fundingGap: number;
+  status: 'RECONCILED' | 'NOT_CONFIGURED';
+}
+
+export interface HealthScoreBreakdown {
+  score: number; // 0 to 100
+  status: 'HEALTHY' | 'MODERATE' | 'NEEDS_ATTENTION' | 'NOT_CONFIGURED';
+  emergencyRunwayScore: number; // max 25
+  debtSolvencyScore: number;    // max 25
+  savingsRateScore: number;     // max 25
+  insuranceAdequacyScore: number; // max 25
+  explanations: string[];
 }

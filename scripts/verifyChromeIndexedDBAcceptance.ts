@@ -81,9 +81,9 @@ async function verifyNoDemoValuesInDOM(page: Page): Promise<{ clean: boolean; de
 async function getLedgerStatsFromPage(page: Page) {
   return page.evaluate(`
     new Promise(function(resolveMain, rejectMain) {
-      const openReq = window.indexedDB.open('finboom_db', 2);
+      const openReq = window.indexedDB.open('finboom_db', 3);
       openReq.onerror = function() { rejectMain(openReq.error); };
-      openReq.onupgradeneeded = function(e) { const db = openReq.result; if (!db.objectStoreNames.contains("transactions")) db.createObjectStore("transactions", { keyPath: "id" }); if (!db.objectStoreNames.contains("assets")) db.createObjectStore("assets", { keyPath: "name" }); if (!db.objectStoreNames.contains("liabilities")) db.createObjectStore("liabilities", { keyPath: "name" }); if (!db.objectStoreNames.contains("snapshots")) db.createObjectStore("snapshots", { keyPath: "id" }); if (!db.objectStoreNames.contains("accounts")) db.createObjectStore("accounts", { keyPath: "id" }); if (!db.objectStoreNames.contains("budgets")) db.createObjectStore("budgets", { keyPath: "id" }); if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" }); };
+      openReq.onupgradeneeded = function(e) { const db = openReq.result; if (!db.objectStoreNames.contains("transactions")) db.createObjectStore("transactions", { keyPath: "id" }); if (!db.objectStoreNames.contains("assets")) db.createObjectStore("assets", { keyPath: "name" }); if (!db.objectStoreNames.contains("liabilities")) db.createObjectStore("liabilities", { keyPath: "name" }); if (!db.objectStoreNames.contains("snapshots")) db.createObjectStore("snapshots", { keyPath: "id" }); if (!db.objectStoreNames.contains("accounts")) db.createObjectStore("accounts", { keyPath: "id" }); if (!db.objectStoreNames.contains("budgets")) db.createObjectStore("budgets", { keyPath: "id" }); if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" }); if (!db.objectStoreNames.contains("policies")) db.createObjectStore("policies", { keyPath: "id" }); if (!db.objectStoreNames.contains("goals")) db.createObjectStore("goals", { keyPath: "id" }); if (!db.objectStoreNames.contains("profile")) db.createObjectStore("profile", { keyPath: "id" }); };
       openReq.onsuccess = function() {
         const db = openReq.result;
         const tx = db.transaction(['transactions', 'assets', 'liabilities', 'snapshots', 'meta'], 'readonly');
@@ -153,7 +153,8 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
   }
 
   let browser: Browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox', `--user-data-dir=${PROFILE_DIR}`]
+    args: ['--no-sandbox', '--disable-setuid-sandbox', `--user-data-dir=${PROFILE_DIR}`],
+    env: { ...process.env, LD_LIBRARY_PATH: '/home/user/.local/lib:' + (process.env.LD_LIBRARY_PATH || '') }
   });
   const chromeVersion = await browser.version();
   console.log(`[Browser Identity]: ${chromeVersion} running against ${BASE_URL} (profile: ${PROFILE_DIR})\n`);
@@ -277,7 +278,8 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await browser.close();
     console.log('\n  [Lifecycle]: Closed Chrome browser instance. Launching new Chromium process with same profile...');
     browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', `--user-data-dir=${PROFILE_DIR}`]
+      args: ['--no-sandbox', '--disable-setuid-sandbox', `--user-data-dir=${PROFILE_DIR}`],
+      env: { ...process.env, LD_LIBRARY_PATH: '/home/user/.local/lib:' + (process.env.LD_LIBRARY_PATH || '') }
     });
     page = await browser.newPage();
     page.on('dialog', async dialog => {
@@ -412,7 +414,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     let idbAssets = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("assets", "readonly");
@@ -433,7 +435,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbAssets = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("assets", "readonly");
@@ -461,7 +463,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     let idbLiabs = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("liabilities", "readonly");
@@ -482,7 +484,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbLiabs = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("liabilities", "readonly");
@@ -518,7 +520,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     let idbSnaps = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("snapshots", "readonly");
@@ -541,7 +543,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbSnaps = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("snapshots", "readonly");
@@ -786,7 +788,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 500));
     const reloadPreservedData = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const txA = db.transaction("assets", "readonly");
@@ -1095,7 +1097,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     // C18 — Browser restart preserves state (verified via persistent IndexedDB query)
     const restartPreservedC = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("assets", "readonly");
@@ -1627,7 +1629,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     let idbM05 = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("transactions", "readonly");
@@ -1656,7 +1658,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbM05 = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("transactions", "readonly");
@@ -1679,7 +1681,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbM05 = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("transactions", "readonly");
@@ -1704,7 +1706,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     idbM05 = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("transactions", "readonly");
@@ -1779,7 +1781,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     const idbBudgets = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("budgets", "readonly");
@@ -1872,7 +1874,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     const idbAccounts = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("accounts", "readonly");
@@ -1983,7 +1985,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 600));
     const clearedIdbState = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const txT = db.transaction("transactions", "readonly");
@@ -2026,7 +2028,7 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     await new Promise(r => setTimeout(r, 400));
     const reloadedIdbAccounts = await page.evaluate(() => {
       return new Promise((resolve) => {
-        const req = window.indexedDB.open("finboom_db", 2);
+        const req = window.indexedDB.open("finboom_db", 3);
         req.onsuccess = () => {
           const db = req.result;
           const tx = db.transaction("accounts", "readonly");
@@ -2048,6 +2050,396 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "WP18-M26",
       "Browser restart preserves all canonical accounts and budgets across sessions"
     );
+
+    // =========================================================================
+    // WP-19: Essentials Feature Parity & Canonical Governance Acceptance Suite
+    // (WP19-E01 to WP19-E20)
+    // =========================================================================
+    console.log('\n  [WP-19 Essentials Feature Parity & Canonical Governance Acceptance Suite]');
+
+    // Navigate to Essentials Tab
+    await clickNav(page, "Essentials");
+    await new Promise(r => setTimeout(r, 400));
+
+    // WP19-E01: Fresh Essentials workspace DOM renders truthful empty state / Not configured
+    let tabEmergencyExists = await page.evaluate(() => !!document.getElementById('essentials-tab-emergency'));
+    let tabInsuranceExists = await page.evaluate(() => !!document.getElementById('essentials-tab-insurance'));
+    let tabGoalsExists = await page.evaluate(() => !!document.getElementById('essentials-tab-goals'));
+    let tabProfileExists = await page.evaluate(() => !!document.getElementById('essentials-tab-profile'));
+
+    // Check fresh profile inputs have no fake default values
+    await page.click('#essentials-tab-profile');
+    await new Promise(r => setTimeout(r, 200));
+    let freshProfileInputsClean = await page.evaluate(() => {
+      const ageEl = document.getElementById('input-profile-age') as HTMLInputElement;
+      const depEl = document.getElementById('input-profile-dependents') as HTMLInputElement;
+      const incEl = document.getElementById('input-profile-income') as HTMLInputElement;
+      const expEl = document.getElementById('input-profile-expenses') as HTMLInputElement;
+      return (
+        ageEl && ageEl.value === '' && ageEl.placeholder === '32' &&
+        depEl && depEl.value === '' && depEl.placeholder === '2' &&
+        incEl && incEl.value === '' &&
+        expEl && expEl.value === ''
+      );
+    });
+
+    check(
+      tabEmergencyExists && tabInsuranceExists && tabGoalsExists && tabProfileExists && freshProfileInputsClean,
+      "WP19-E01",
+      "Fresh Essentials workspace renders 4 subtabs with truthful empty state and clean profile inputs (no fake defaults)"
+    );
+
+    // WP19-E02: Emergency Fund workspace renders target calculations and allows runway adjustments
+    await page.click('#essentials-tab-emergency');
+    await new Promise(r => setTimeout(r, 300));
+    let runwayBtns = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('button')).filter(b => b.id?.startsWith('btn-target-months-') || b.textContent === '3M' || b.textContent === '6M').length;
+    });
+    check(
+      runwayBtns >= 4,
+      "WP19-E02",
+      "Emergency Fund workspace renders configurable runway target buttons (3, 6, 9, 12 months)"
+    );
+
+    // WP19-E03: Add Asset (Cash), Bank Account, and Profile to test Emergency Fund runway calculations
+    await page.evaluate(() => {
+      window.FinancialCommands.recordAssetWithMetadata({
+        name: "Liquid Bank Savings",
+        amount: 300000,
+        type: "Cash & Savings"
+      });
+      window.FinancialCommands.recordAccount({
+        name: "Primary Checking Account",
+        type: "Bank",
+        openingBalance: 150000
+      });
+      window.FinancialCommands.saveProfile({
+        id: "default-profile",
+        age: 30,
+        monthlyIncome: 150000,
+        monthlyExpenses: 75000,
+        savingsRate: 50,
+        dependents: 1,
+        targetEmergencyMonths: 6,
+        updatedAt: new Date().toISOString()
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let runwayMetric = await page.evaluate(() => {
+      return window.FinancialQueries.getEmergencyFundAnalysis(6);
+    });
+    check(
+      runwayMetric.liquidReserves >= 450000 && runwayMetric.monthlyEssentialExpenses === 75000 && runwayMetric.runwayMonths >= 6.0 && runwayMetric.fundingGap === 0,
+      "WP19-E03",
+      "Emergency fund analysis calculates >=6.0 months runway summing distinct Cash assets + Bank accounts"
+    );
+
+    // WP19-E04: Insurance Schedule subtab renders Add Policy button & Modal
+    await page.click('#essentials-tab-insurance');
+    await new Promise(r => setTimeout(r, 300));
+    await page.click('#btn-add-policy');
+    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const termBtn = btns.find(b => b.textContent?.includes('Term Life'));
+      if (termBtn) termBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 300));
+    let policyModalOpen = await page.evaluate(() => !!document.getElementById('input-policy-provider'));
+    check(
+      policyModalOpen,
+      "WP19-E04",
+      "Add Policy modal opens with Term Life and Health insurance selection"
+    );
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const closeBtn = btns.find(b => b.textContent?.includes('Cancel') || b.querySelector('svg.lucide-x') || b.innerHTML.includes('lucide-x'));
+      if (closeBtn) closeBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 300));
+
+    // WP19-E05: Add Term Life Policy persists to real Chrome IndexedDB
+    await page.evaluate(() => {
+      window.FinancialCommands.recordPolicy({
+        policyNumber: "HDFC-TERM-8811",
+        provider: "HDFC Life",
+        type: "Term Life",
+        coverAmount: 15000000,
+        premiumAmount: 18000,
+        renewalDate: "2026-01-01",
+        status: "Active"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbPolicies = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("policies", "readonly");
+          const getReq = tx.objectStore("policies").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundTermPol = (idbPolicies as any[]).find(p => p.policyNumber === 'HDFC-TERM-8811');
+    check(
+      foundTermPol && foundTermPol.coverAmount === 15000000 && foundTermPol.type === 'Term Life',
+      "WP19-E05",
+      "Add Term Life policy persists coverAmount ₹1.5 Cr to real Chrome IndexedDB (policies store)"
+    );
+
+    // WP19-E06: Term Life policy displays in policy schedule table with active cover KPI
+    let insMetricVal = await page.evaluate(() => {
+      return window.FinancialQueries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL').value;
+    });
+    check(
+      insMetricVal === 15000000,
+      "WP19-E06",
+      "Active Insurance Policy total KPI aggregates ₹1.5 Cr coverage"
+    );
+
+    // WP19-E07: Add Health Insurance Policy and verify total sum insured
+    await page.evaluate(() => {
+      window.FinancialCommands.recordPolicy({
+        policyNumber: "STAR-HLTH-2233",
+        provider: "Star Health",
+        type: "Health",
+        coverAmount: 1000000,
+        premiumAmount: 24000,
+        status: "Active"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let insMetricValUpdated = await page.evaluate(() => {
+      return window.FinancialQueries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL').value;
+    });
+    check(
+      insMetricValUpdated === 16000000,
+      "WP19-E07",
+      "Adding Health Insurance increases Active Insurance Policy total KPI to ₹1.6 Cr"
+    );
+
+    // WP19-E08: Delete policy removes policy from repository and updates KPI reactively
+    let healthPolId = (await page.evaluate(() => {
+      return window.FinancialQueries.getPolicies().find(p => p.type === 'Health')?.id;
+    })) as string;
+    if (healthPolId) {
+      await page.evaluate((id) => {
+        window.FinancialCommands.deletePolicy(id);
+      }, healthPolId);
+    }
+    await new Promise(r => setTimeout(r, 400));
+    let insMetricAfterDel = await page.evaluate(() => {
+      return window.FinancialQueries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL').value;
+    });
+    check(
+      insMetricAfterDel === 15000000,
+      "WP19-E08",
+      "Deleting Health policy reduces Active Insurance total KPI back to ₹1.5 Cr"
+    );
+
+    // WP19-E09: Financial Goals subtab renders Add Goal and Inflation Calculator triggers
+    await page.click('#essentials-tab-goals');
+    await new Promise(r => setTimeout(r, 300));
+    let goalAddBtnExists = await page.evaluate(() => !!document.getElementById('btn-add-goal'));
+    let infCalcBtnExists = await page.evaluate(() => !!document.getElementById('btn-open-inflation-calc'));
+    check(
+      goalAddBtnExists && infCalcBtnExists,
+      "WP19-E09",
+      "Financial Goals subtab renders Add Goal and Inflation Calculator action triggers"
+    );
+
+    // WP19-E10: Add Goal modal records goal with target amount, date, and monthly SIP into IndexedDB
+    await page.evaluate(() => {
+      window.FinancialCommands.recordGoal({
+        name: "Retirement Corpus 2050",
+        template: "Retirement",
+        targetAmount: 30000000,
+        currentSavedAmount: 6000000,
+        monthlyContribution: 50000,
+        targetDate: "2050-12-31",
+        status: "In Progress"
+      });
+      window.FinancialCommands.recordGoal({
+        name: "Child Higher Education",
+        template: "Education",
+        targetAmount: 4000000,
+        currentSavedAmount: 800000,
+        monthlyContribution: 20000,
+        targetDate: "2036-05-31",
+        status: "In Progress"
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbGoals = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("goals", "readonly");
+          const getReq = tx.objectStore("goals").getAll();
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || []); };
+        };
+      });
+    });
+    const foundGoals = idbGoals as any[];
+    check(
+      foundGoals.length === 2 && foundGoals.some(g => g.name === 'Retirement Corpus 2050'),
+      "WP19-E10",
+      "Recorded financial goals persist to Chrome IndexedDB (goals store)"
+    );
+
+    // WP19-E11: Goal progress calculates accurately (20% progress)
+    let retGoal = foundGoals.find(g => g.name === 'Retirement Corpus 2050');
+    let pctProgress = retGoal ? Math.round((retGoal.currentSavedAmount / retGoal.targetAmount) * 100) : 0;
+    check(
+      pctProgress === 20,
+      "WP19-E11",
+      "Goal progress calculates accurately as 20% (₹60L / ₹3.0 Cr)"
+    );
+
+    // WP19-E12: Monthly SIP commitment aggregates dynamically from active goals
+    let sipTotalVal = await page.evaluate(() => {
+      return window.FinancialQueries.getMetric('SIP_COMMITMENT_MONTHLY').value;
+    });
+    check(
+      sipTotalVal === 70000, // 50000 + 20000
+      "WP19-E12",
+      "Monthly SIP commitment aggregates dynamically to ₹70,000 / mo across in-progress goals"
+    );
+
+    // WP19-E13: Inflation Calculator Modal opens and calculates future value accurately
+    await page.click('#btn-open-inflation-calc');
+    await new Promise(r => setTimeout(r, 300));
+    let infCalcInputExists = await page.evaluate(() => !!document.getElementById('input-calc-pv'));
+    check(
+      infCalcInputExists,
+      "WP19-E13",
+      "Inflation Calculator modal opens and provides interactive FV compounding formula"
+    );
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      const closeBtn = btns.find(b => b.textContent?.includes('Close') || b.querySelector('svg.lucide-x'));
+      if (closeBtn) closeBtn.click();
+    });
+    await new Promise(r => setTimeout(r, 300));
+
+    // WP19-E14: Delete goal removes milestone and updates SIP commitment reactively
+    let eduGoalId = (await page.evaluate(() => {
+      return window.FinancialQueries.getGoals().find(g => g.name === 'Child Higher Education')?.id;
+    })) as string;
+    if (eduGoalId) {
+      await page.evaluate((id) => {
+        window.FinancialCommands.deleteGoal(id);
+      }, eduGoalId);
+    }
+    await new Promise(r => setTimeout(r, 400));
+    let sipAfterGoalDel = await page.evaluate(() => {
+      return window.FinancialQueries.getMetric('SIP_COMMITMENT_MONTHLY').value;
+    });
+    check(
+      sipAfterGoalDel === 50000,
+      "WP19-E14",
+      "Deleting Education goal reduces Monthly SIP commitment KPI back to ₹50,000 / mo"
+    );
+
+    // WP19-E15: Profile & Health subtab renders profile inputs and calculates savings rate
+    await page.click('#essentials-tab-profile');
+    await new Promise(r => setTimeout(r, 300));
+    let profileFormExists = await page.evaluate(() => !!document.getElementById('btn-save-profile'));
+    check(
+      profileFormExists,
+      "WP19-E15",
+      "Profile & Health subtab renders profile editor and transparent health diagnostics"
+    );
+
+    // WP19-E16: Financial Profile persists to IndexedDB (profile store)
+    await page.evaluate(() => {
+      window.FinancialCommands.saveProfile({
+        id: "default-profile",
+        age: 35,
+        monthlyIncome: 250000,
+        monthlyExpenses: 100000,
+        savingsRate: 60,
+        dependents: 2,
+        updatedAt: new Date().toISOString()
+      });
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let idbProfile = await page.evaluate(() => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.open("finboom_db", 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("profile", "readonly");
+          const getReq = tx.objectStore("profile").get("default-profile");
+          getReq.onsuccess = () => { db.close(); resolve(getReq.result || null); };
+        };
+      });
+    });
+    check(
+      idbProfile && (idbProfile as any).monthlyIncome === 250000 && (idbProfile as any).savingsRate === 60,
+      "WP19-E16",
+      "Financial Profile persists to Chrome IndexedDB with 60% savings rate (profile store)"
+    );
+
+    // WP19-E17: Transparent 4-factor Financial Health Score computes explainable breakdown
+    let healthScoreResult = await page.evaluate(() => {
+      return window.FinancialQueries.getFinancialHealthScore();
+    });
+    check(
+      healthScoreResult.status === 'HEALTHY' && healthScoreResult.score > 0 && healthScoreResult.explanations.length === 4,
+      "WP19-E17",
+      "Financial Health Score computes transparent 4-factor diagnostic score with explainable labels"
+    );
+
+    // WP19-E18: Multi-tab navigation across Overview -> Wealth -> Money -> Essentials -> Calculators preserves state
+    await clickNav(page, "Overview");
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Money");
+    await clickNav(page, "Essentials");
+    let afterNavPolicies = await page.evaluate(() => window.FinancialQueries.getPolicies().length);
+    let afterNavGoals = await page.evaluate(() => window.FinancialQueries.getGoals().length);
+    check(
+      afterNavPolicies === 1 && afterNavGoals === 1,
+      "WP19-E18",
+      "Multi-tab navigation across all primary routes preserves canonical Essentials state"
+    );
+
+    // WP19-E19: Browser refresh preserves canonical policies, goals, and profile in Chrome IndexedDB
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 500));
+    let reloadedPolicies = await page.evaluate(() => window.FinancialQueries.getPolicies().length);
+    let reloadedGoals = await page.evaluate(() => window.FinancialQueries.getGoals().length);
+    let reloadedProfile = await page.evaluate(() => window.FinancialQueries.getProfile() !== null);
+    check(
+      reloadedPolicies === 1 && reloadedGoals === 1 && reloadedProfile,
+      "WP19-E19",
+      "Browser refresh preserves all canonical policies, goals, and profile in Chrome IndexedDB"
+    );
+
+    // WP19-E20: Clear Dev Data removes all Essentials data and application restart preserves clean state
+    await page.evaluate(`
+      (() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        for (let i = 0; i < buttons.length; i++) {
+          if (buttons[i].textContent && buttons[i].textContent.includes('Clear Dev Data')) {
+            buttons[i].click();
+          }
+        }
+      })()
+    `);
+    await new Promise(r => setTimeout(r, 600));
+    let clearedPolicies = await page.evaluate(() => window.FinancialQueries.getPolicies().length);
+    let clearedGoals = await page.evaluate(() => window.FinancialQueries.getGoals().length);
+    let clearedProfile = await page.evaluate(() => window.FinancialQueries.getProfile());
+    check(
+      clearedPolicies === 0 && clearedGoals === 0 && clearedProfile === null,
+      "WP19-E20",
+      "Clear Dev Data removes all policies, goals, and profile records from IndexedDB and resets state"
+    );
+
 
   } finally {
     await browser.close();

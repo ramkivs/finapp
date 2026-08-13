@@ -12,7 +12,13 @@ import {
   ControlledAccountType,
   MonthlyBudget,
   mapTransactionCategoryToBudget,
-  BUDGET_CATEGORY_FAMILIES
+  BUDGET_CATEGORY_FAMILIES,
+  InsurancePolicy,
+  PolicyType,
+  FinancialGoal,
+  GoalTemplateType,
+  GOAL_TEMPLATES,
+  FinancialProfile
 } from '../domain/types';
 import { formatDisplayDate } from '../services/DateRangeService';
 
@@ -313,6 +319,154 @@ export class FinancialCommands {
     return this.saveMonthlyBudget(targetMonthStr, { ...srcBudget.allocations });
   }
 
+  /* =========================================================================
+   * WP-19: Essentials Commands (Insurance Policies, Goals, Financial Profile)
+   * ========================================================================= */
+
+  static recordPolicy(params: {
+    type: PolicyType;
+    provider: string;
+    policyNumber?: string;
+    coverAmount: number;
+    premiumAmount: number;
+    renewalDate?: string;
+    status?: 'Active' | 'Lapsed' | 'Pending';
+    currency?: string;
+    notes?: string;
+  }): InsurancePolicy {
+    if (!params.provider || !params.provider.trim()) {
+      throw new Error('Insurance provider name is required.');
+    }
+    const coverNum = Number(params.coverAmount);
+    if (isNaN(coverNum) || coverNum <= 0) {
+      throw new Error('Cover amount must be greater than zero.');
+    }
+    const premiumNum = Number(params.premiumAmount);
+    if (isNaN(premiumNum) || premiumNum < 0) {
+      throw new Error('Premium amount cannot be negative.');
+    }
+    const validTypes: PolicyType[] = ['Term Life', 'Health', 'Motor', 'Home', 'Other'];
+    if (!validTypes.includes(params.type)) {
+      throw new Error(`Invalid policy type "${params.type}".`);
+    }
+    const validStatuses = ['Active', 'Lapsed', 'Pending'];
+    if (params.status && !validStatuses.includes(params.status)) {
+      throw new Error(`Invalid policy status "${params.status}".`);
+    }
+
+    const policy: InsurancePolicy = {
+      id: 'pol-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      type: params.type,
+      provider: params.provider.trim(),
+      policyNumber: params.policyNumber?.trim() || undefined,
+      coverAmount: coverNum,
+      premiumAmount: premiumNum,
+      renewalDate: params.renewalDate?.trim() || undefined,
+      status: params.status || 'Active',
+      currency: params.currency?.trim() || undefined, // No default INR; preserves Not Specified
+      notes: params.notes?.trim() || undefined
+    };
+
+    repository.policies.add(policy);
+    return policy;
+  }
+
+  static deletePolicy(id: string): void {
+    repository.policies.remove(id);
+  }
+
+  static recordGoal(params: {
+    name: string;
+    template: GoalTemplateType;
+    targetAmount: number;
+    targetDate?: string;
+    currentSavedAmount?: number;
+    monthlyContribution?: number;
+    linkedCategory?: string;
+    status?: 'In Progress' | 'Achieved' | 'Paused';
+    currency?: string;
+    notes?: string;
+  }): FinancialGoal {
+    if (!params.name || !params.name.trim()) {
+      throw new Error('Goal name is required.');
+    }
+    const targetNum = Number(params.targetAmount);
+    if (isNaN(targetNum) || targetNum <= 0) {
+      throw new Error('Target corpus amount must be greater than zero.');
+    }
+    if (!GOAL_TEMPLATES.includes(params.template)) {
+      throw new Error(`Invalid goal template "${params.template}".`);
+    }
+    const savedNum = params.currentSavedAmount !== undefined ? Number(params.currentSavedAmount) : 0;
+    if (isNaN(savedNum) || savedNum < 0) {
+      throw new Error('Current saved amount cannot be negative.');
+    }
+    const monthlyNum = params.monthlyContribution !== undefined ? Number(params.monthlyContribution) : 0;
+    if (isNaN(monthlyNum) || monthlyNum < 0) {
+      throw new Error('Monthly contribution cannot be negative.');
+    }
+    const validStatuses = ['In Progress', 'Achieved', 'Paused'];
+    if (params.status && !validStatuses.includes(params.status)) {
+      throw new Error(`Invalid goal status "${params.status}".`);
+    }
+
+    const goal: FinancialGoal = {
+      id: 'goal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name: params.name.trim(),
+      template: params.template,
+      targetAmount: targetNum,
+      targetDate: params.targetDate?.trim() || undefined,
+      currentSavedAmount: savedNum,
+      monthlyContribution: monthlyNum,
+      linkedCategory: params.linkedCategory?.trim() || undefined,
+      status: params.status || 'In Progress',
+      currency: params.currency?.trim() || undefined,
+      notes: params.notes?.trim() || undefined
+    };
+
+    repository.goals.add(goal);
+    return goal;
+  }
+
+  static deleteGoal(id: string): void {
+    repository.goals.remove(id);
+  }
+
+  static saveProfile(profile: FinancialProfile): void {
+    const inc = Number(profile.monthlyIncome);
+    if (isNaN(inc) || inc < 0) {
+      throw new Error('Monthly income cannot be negative.');
+    }
+    const exp = Number(profile.monthlyExpenses);
+    if (isNaN(exp) || exp < 0) {
+      throw new Error('Monthly expenses cannot be negative.');
+    }
+    if (profile.dependents !== undefined && (isNaN(Number(profile.dependents)) || Number(profile.dependents) < 0)) {
+      throw new Error('Dependents count cannot be negative.');
+    }
+    if (profile.age !== undefined && (isNaN(Number(profile.age)) || Number(profile.age) <= 0 || Number(profile.age) > 120)) {
+      throw new Error('Age must be a valid positive number between 1 and 120.');
+    }
+    if (profile.targetEmergencyMonths !== undefined && (isNaN(Number(profile.targetEmergencyMonths)) || Number(profile.targetEmergencyMonths) < 0)) {
+      throw new Error('Target emergency months cannot be negative.');
+    }
+
+    const computedSavings = Math.max(0, inc - exp);
+    const savingsRate = inc > 0 ? Math.round((computedSavings / inc) * 100) : 0;
+
+    repository.profile.save({
+      ...profile,
+      id: 'default-profile',
+      monthlyIncome: inc,
+      monthlyExpenses: exp,
+      savingsRate: profile.savingsRate !== undefined && !isNaN(Number(profile.savingsRate)) && Number(profile.savingsRate) >= 0 ? Number(profile.savingsRate) : savingsRate,
+      dependents: profile.dependents !== undefined ? Number(profile.dependents) : undefined,
+      age: profile.age !== undefined ? Number(profile.age) : undefined,
+      targetEmergencyMonths: profile.targetEmergencyMonths !== undefined ? Number(profile.targetEmergencyMonths) : undefined,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
   static async clearLocalDevelopmentData(): Promise<void> {
     await repository.clearLocalData();
   }
@@ -322,7 +476,9 @@ export class FinancialCommands {
   }
 
   static togglePrivacy(): void {
-    useCanonicalLedger.getState().togglePrivacy();
+    if (typeof window !== 'undefined' && (window as any).useCanonicalLedger) {
+      (window as any).useCanonicalLedger.getState().togglePrivacy();
+    }
   }
 }
 
