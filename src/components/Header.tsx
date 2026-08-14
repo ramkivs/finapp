@@ -1,53 +1,141 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCanonicalLedger } from '../store/useCanonicalLedger';
-import { Moon, Eye, EyeOff, Bell, User } from 'lucide-react';
+import { Moon, Sun, Eye, EyeOff, Bell, Menu, ChevronDown, Calendar, Wallet } from 'lucide-react';
 
 interface Props {
   toggleDark: () => void;
   isDark: boolean;
+  onOpenMobile?: () => void;
 }
 
-export const Header: React.FC<Props> = ({ toggleDark, isDark }) => {
-  const { privacyMasked, togglePrivacy } = useCanonicalLedger();
+export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) => {
+  const { privacyMasked, togglePrivacy, dateRange, setDateRange, accounts } = useCanonicalLedger();
+  const [showDateMenu, setShowDateMenu] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+
+  const ranges = ['This Month', 'Last Month', '3M', '6M', '12M', 'YTD'];
 
   return (
-    <header className="h-[60px] bg-[#faf9f5] dark:bg-[#0b0f19] border-b border-gray-200 dark:border-gray-800 flex items-center justify-end px-8 sticky top-0 z-30">
+    <header className="h-16 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#21262D] flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 transition-colors duration-150">
+      {/* Left Area: Mobile Hamburger Menu & Active Scope Indicators */}
       <div className="flex items-center gap-3">
+        {onOpenMobile && (
+          <button
+            onClick={onOpenMobile}
+            className="md:hidden p-2 rounded-xl text-gray-500 dark:text-[#8B949E] hover:bg-gray-100 dark:hover:bg-[#21262D] transition"
+            title="Open Menu"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+
+        {/* Account Context Pill */}
+        <div className="relative hidden sm:inline-block">
+          <button
+            onClick={() => { setShowAccountMenu(!showAccountMenu); setShowDateMenu(false); }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] text-xs font-bold text-gray-700 dark:text-[#F0F6FC] hover:border-gray-300 dark:hover:border-[#30363D] transition"
+          >
+            <Wallet size={13} className="text-[#4F8CFF]" />
+            <span>All Accounts</span>
+            <span className="text-[10px] text-gray-400 font-mono">({accounts.length})</span>
+            <ChevronDown size={12} className="text-gray-400" />
+          </button>
+
+          {showAccountMenu && (
+            <div className="absolute left-0 top-10 w-52 bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
+              <button
+                onClick={() => setShowAccountMenu(false)}
+                className="w-full text-left px-3 py-2 rounded-xl bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold"
+              >
+                All Accounts ({accounts.length})
+              </button>
+              {accounts.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => setShowAccountMenu(false)}
+                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] text-gray-700 dark:text-gray-300 font-medium truncate"
+                >
+                  {a.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Global Date Range Context */}
+        <div className="relative hidden sm:inline-block">
+          <button
+            onClick={() => { setShowDateMenu(!showDateMenu); setShowAccountMenu(false); }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] text-xs font-bold text-gray-700 dark:text-[#F0F6FC] hover:border-gray-300 dark:hover:border-[#30363D] transition"
+          >
+            <Calendar size={13} className="text-[#23C55E]" />
+            <span>{dateRange}</span>
+            <ChevronDown size={12} className="text-gray-400" />
+          </button>
+
+          {showDateMenu && (
+            <div className="absolute left-0 top-10 w-44 bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
+              {ranges.map(r => (
+                <button
+                  key={r}
+                  onClick={() => { setDateRange(r); setShowDateMenu(false); }}
+                  className={`w-full text-left px-3 py-1.5 rounded-xl font-bold transition ${
+                    dateRange === r
+                      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                      : 'hover:bg-gray-100 dark:hover:bg-[#21262D] text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Area: Utility Toggles & Profile Pill */}
+      <div className="flex items-center gap-2.5">
+        {/* Dark/Light Mode */}
         <button
           onClick={toggleDark}
-          className="w-[38px] h-[38px] rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition"
-          title="Toggle Light / Dark Mode"
+          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition"
+          title="Toggle Light / Dark Theme"
         >
-          <Moon size={18} />
+          {isDark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
+        {/* Privacy Balance Masking */}
         <button
           onClick={togglePrivacy}
-          className="w-[38px] h-[38px] rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition"
-          title="Mask / Unmask Balances (Persistent)"
+          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition"
+          title="Mask / Unmask Financial Figures (Persistent)"
         >
-          {privacyMasked ? <EyeOff size={18} /> : <Eye size={18} />}
+          {privacyMasked ? <EyeOff size={17} className="text-[#F59E0B]" /> : <Eye size={17} />}
         </button>
 
+        {/* Notification Bell */}
         <button
-          onClick={() => alert('1 New Alert: August Dividend from ITC Ltd (₹2,100) credited to HDFC Bank (...4921).')}
-          className="w-[38px] h-[38px] rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition relative"
+          onClick={() => alert('Notification: August Dividend from ITC Ltd (₹2,100) reconciled into canonical ledger.')}
+          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition relative"
           title="Notifications"
         >
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
+          <Bell size={17} />
+          <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center">
             1
           </span>
         </button>
 
+        {/* User Profile Badge */}
         <div
-          onClick={() => alert('Profile: Ramakrishnan VS (Pro Member) • React Production Architecture v2.1.7 Active')}
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          onClick={() => alert('Profile: Ramakrishnan VS (Pro Member) • FinBoom v3.0 Production Active')}
+          className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] cursor-pointer hover:border-gray-300 dark:hover:border-[#30363D] transition"
         >
-          <div className="w-7 h-7 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#4F8CFF] to-[#06B6D4] text-white font-bold text-[11px] flex items-center justify-center shadow-sm">
             R
           </div>
-          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Ramakrishnan VS</span>
+          <span className="text-xs font-bold text-gray-800 dark:text-[#F0F6FC] hidden md:inline">
+            Ramakrishnan VS
+          </span>
         </div>
       </div>
     </header>

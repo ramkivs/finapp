@@ -1,13 +1,39 @@
 import React from 'react';
-import { LayoutDashboard, TrendingUp, Wallet, ShieldCheck, Upload, Calculator, Sparkles, Settings, MessageSquare, Database, Trash2 } from 'lucide-react';
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Wallet,
+  ShieldCheck,
+  Upload,
+  Calculator,
+  Sparkles,
+  Settings,
+  MessageSquare,
+  Database,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  X
+} from 'lucide-react';
 import { FinancialCommands } from '../application/commands';
 
 interface Props {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
+export const Sidebar: React.FC<Props> = ({
+  activeTab,
+  setActiveTab,
+  isCollapsed = false,
+  onToggleCollapse,
+  isMobileOpen = false,
+  onCloseMobile
+}) => {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'wealth', label: 'Wealth', icon: TrendingUp },
@@ -32,35 +58,75 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
     }
   };
 
-  return (
-    <aside className="w-[240px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 flex-shrink-0 z-40">
-      <div className="p-6 font-serif text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-        FinBoom
+  const handleNavClick = (id: string) => {
+    setActiveTab(id);
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-[#161B22] border-r border-[#21262D] text-[#F0F6FC]">
+      {/* Brand Header */}
+      <div className={`p-5 flex items-center justify-between border-b border-[#21262D] ${isCollapsed ? 'justify-center' : ''}`}>
+        {!isCollapsed ? (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23C55E] to-[#4F8CFF] flex items-center justify-center font-black text-white text-sm shadow-md">
+              F
+            </div>
+            <div>
+              <div className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+                <span>FINBOOM</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-[#21262D] text-[#8B949E] rounded-md font-mono">v3.0</span>
+              </div>
+              <p className="text-[10px] text-[#8B949E] tracking-tight">Financial Command Center</p>
+            </div>
+          </div>
+        ) : (
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23C55E] to-[#4F8CFF] flex items-center justify-center font-black text-white text-sm shadow-md">
+            F
+          </div>
+        )}
+
+        {/* Mobile close button */}
+        {onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden p-1.5 text-[#8B949E] hover:text-white rounded-lg hover:bg-[#21262D] transition"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
-      <nav className="px-3 py-2 flex-1 overflow-y-auto">
+      {/* Navigation list */}
+      <nav className="p-3 flex-1 overflow-y-auto space-y-1">
         {navItems.map(item => {
           const Icon = item.icon;
           const active = activeTab === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition mb-1 ${
+              onClick={() => handleNavClick(item.id)}
+              title={isCollapsed ? item.label : undefined}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
                 active
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
+                  ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
+                  : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
+              } ${isCollapsed ? 'justify-center px-0' : ''}`}
             >
-              <Icon size={19} />
-              <span>{item.label}</span>
+              <Icon size={18} className={active ? 'text-[#23C55E]' : 'text-[#8B949E]'} />
+              {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
 
-        <div className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-4 pt-5 pb-2">
-          TOOLS
-        </div>
+        {/* Tools Section */}
+        {!isCollapsed && (
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6E7681] px-3.5 pt-5 pb-1.5">
+            TOOLS
+          </div>
+        )}
 
         {toolItems.map(item => {
           const Icon = item.icon;
@@ -68,61 +134,111 @@ export const Sidebar: React.FC<Props> = ({ activeTab, setActiveTab }) => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition mb-1 ${
+              onClick={() => handleNavClick(item.id)}
+              title={isCollapsed ? item.label : undefined}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
                 active
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-              }`}
+                  ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
+                  : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
+              } ${isCollapsed ? 'justify-center px-0' : ''}`}
             >
-              <Icon size={19} />
-              <span>{item.label}</span>
+              <Icon size={18} className={active ? 'text-[#23C55E]' : 'text-[#8B949E]'} />
+              {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
 
+        {/* Data & Diagnostics Buttons */}
+        {!isCollapsed && (
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6E7681] px-3.5 pt-5 pb-1.5">
+            DATA & SETTINGS
+          </div>
+        )}
+
         <button
           onClick={handleLoadDemo}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition mb-1"
+          title={isCollapsed ? 'Load Demo Data' : undefined}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-green-400 bg-green-950/20 hover:bg-green-900/40 border border-green-900/30 transition-all duration-150 ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Database size={19} />
-          <span>Load Demo Data</span>
+          <Database size={17} />
+          {!isCollapsed && <span>Load Demo Data</span>}
         </button>
 
         <button
           onClick={handleClearData}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition mb-1"
+          title={isCollapsed ? 'Clear Dev Data' : undefined}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 transition-all duration-150 ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Trash2 size={19} />
-          <span>Clear Dev Data</span>
+          <Trash2 size={17} />
+          {!isCollapsed && <span>Clear Dev Data</span>}
         </button>
 
         <button
-          onClick={() => alert('What\'s New (v2.1.7): React 18 Production Build with 100% Zero-Literal Temporal Authority.')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition mb-1"
+          onClick={() => alert('What\'s New (v3.0): Next-Gen Unified Dark Financial Intelligence Dashboard with zero-dependency responsive charts.')}
+          title={isCollapsed ? "What's New" : undefined}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Sparkles size={19} />
-          <span>What's New</span>
+          <Sparkles size={17} />
+          {!isCollapsed && <span>What's New</span>}
         </button>
 
         <button
           onClick={() => alert('Settings: Global privacy persistence enabled in localStorage (finapp.privacy.masked).')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition mb-1"
+          title={isCollapsed ? 'Settings' : undefined}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Settings size={19} />
-          <span>Settings</span>
+          <Settings size={17} />
+          {!isCollapsed && <span>Settings</span>}
         </button>
       </nav>
 
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+      {/* Footer & Collapse Toggle */}
+      <div className="p-3 border-t border-[#21262D] space-y-1">
         <button
           onClick={() => alert('Feedback: Thank you! We read every suggestion from our community.')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+          title={isCollapsed ? 'Feedback' : undefined}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <MessageSquare size={19} />
-          <span>Feedback</span>
+          <MessageSquare size={17} />
+          {!isCollapsed && <span>Feedback</span>}
         </button>
+
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="hidden md:flex w-full items-center justify-center py-2 rounded-xl text-xs font-bold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition"
+            title={isCollapsed ? 'Expand Sidebar (240px)' : 'Collapse Sidebar (72px)'}
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        )}
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside
+        className={`hidden md:block h-screen sticky top-0 flex-shrink-0 z-40 transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-[72px]' : 'w-[240px]'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Off-Canvas Drawer Overlay */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <div className="relative w-[260px] max-w-[80vw] h-full shadow-2xl z-50">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 };

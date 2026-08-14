@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { OverviewPage } from './pages/OverviewPage';
@@ -12,26 +12,55 @@ import { CustomDateModal } from './components/CustomDateModal';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('money');
-  const [isDark, setIsDark] = useState<boolean>(false);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('finapp.theme') === 'dark' ||
+        (!localStorage.getItem('finapp.theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
+
   const [activeModal, setActiveModal] = useState<
     null | 'modal-income' | 'modal-expense' | 'modal-transfer' | 'modal-custom-date'
   >(null);
 
-  const toggleDark = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
+  useEffect(() => {
+    if (isDark) {
       document.documentElement.classList.add('dark');
+      localStorage.setItem('finapp.theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      localStorage.setItem('finapp.theme', 'light');
     }
+  }, [isDark]);
+
+  const toggleDark = () => {
+    setIsDark(prev => !prev);
   };
 
   return (
-    <div className={`flex min-h-screen w-full ${isDark ? 'dark bg-[#0b0f19]' : 'bg-[#faf9f5]'}`}>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className={`flex min-h-screen w-full font-sans antialiased ${isDark ? 'dark bg-[#0D1117] text-[#F0F6FC]' : 'bg-[#faf9f5] text-gray-900'}`}>
+      {/* Responsive Sidebar with Collapse & Mobile Off-Canvas Drawer */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+        isMobileOpen={isMobileDrawerOpen}
+        onCloseMobile={() => setIsMobileDrawerOpen(false)}
+      />
+
+      {/* Main Workspace Canvas */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header toggleDark={toggleDark} isDark={isDark} />
-        <main className="p-8 max-w-[1400px] w-full mx-auto flex-1">
+        <Header
+          toggleDark={toggleDark}
+          isDark={isDark}
+          onOpenMobile={() => setIsMobileDrawerOpen(true)}
+        />
+
+        <main className="p-4 md:p-6 lg:p-8 max-w-[1440px] w-full mx-auto flex-1">
           {activeTab === 'overview' && <OverviewPage />}
           {activeTab === 'wealth' && <WealthPage />}
           {activeTab === 'money' && (
@@ -43,6 +72,7 @@ export function App() {
         </main>
       </div>
 
+      {/* Reusable Modals (Preserving All Certified Contracts) */}
       <IncomeModal isOpen={activeModal === 'modal-income'} onClose={() => setActiveModal(null)} />
       <ExpenseModal isOpen={activeModal === 'modal-expense'} onClose={() => setActiveModal(null)} />
       <TransferModal isOpen={activeModal === 'modal-transfer'} onClose={() => setActiveModal(null)} />
@@ -50,4 +80,5 @@ export function App() {
     </div>
   );
 }
+
 export default App;

@@ -2152,9 +2152,8 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Add Policy modal opens with Term Life and Health insurance selection"
     );
     await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      const closeBtn = btns.find(b => b.textContent?.includes('Cancel') || b.querySelector('svg.lucide-x') || b.innerHTML.includes('lucide-x'));
-      if (closeBtn) closeBtn.click();
+      const cancelBtn = document.getElementById('btn-cancel-policy-modal') || document.getElementById('btn-close-policy-modal');
+      if (cancelBtn) cancelBtn.click();
     });
     await new Promise(r => setTimeout(r, 300));
 
@@ -2319,9 +2318,14 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Inflation Calculator modal opens and provides interactive FV compounding formula"
     );
     await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      const closeBtn = btns.find(b => b.textContent?.includes('Close') || b.querySelector('svg.lucide-x'));
-      if (closeBtn) closeBtn.click();
+      const closeBtn = document.getElementById('btn-close-inflation-modal');
+      if (closeBtn) {
+        closeBtn.click();
+      } else {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const found = btns.find(b => b.textContent?.includes('Close') || b.querySelector('svg.lucide-x'));
+        if (found) found.click();
+      }
     });
     await new Promise(r => setTimeout(r, 300));
 

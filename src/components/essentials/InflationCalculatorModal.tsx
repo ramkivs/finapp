@@ -29,6 +29,7 @@ export const InflationCalculatorModal: React.FC<Props> = ({ isOpen, onClose }) =
             </h3>
           </div>
           <button
+            id="btn-close-inflation-modal"
             onClick={onClose}
             className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
           >
