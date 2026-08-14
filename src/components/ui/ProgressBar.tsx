@@ -1,34 +1,49 @@
 import React from 'react';
 
 interface Props {
-  percentage: number;
+  percentage?: number;
+  value?: number;
+  max?: number;
   label?: string;
   leftText?: React.ReactNode;
   rightText?: React.ReactNode;
-  color?: 'green' | 'blue' | 'cyan' | 'amber' | 'rose';
+  color?: 'green' | 'blue' | 'cyan' | 'amber' | 'rose' | 'emerald' | 'indigo';
+  variant?: 'green' | 'blue' | 'cyan' | 'amber' | 'rose' | 'emerald' | 'indigo';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-const COLOR_MAP = {
+const COLOR_MAP: Record<string, string> = {
   green: 'bg-[#23C55E]',
+  emerald: 'bg-emerald-500',
   blue: 'bg-[#4F8CFF]',
   cyan: 'bg-[#06B6D4]',
+  indigo: 'bg-indigo-500',
   amber: 'bg-[#F59E0B]',
   rose: 'bg-[#EF4444]'
 };
 
 export const ProgressBar: React.FC<Props> = ({
   percentage,
+  value,
+  max = 100,
   label,
   leftText,
   rightText,
-  color = 'green',
+  color,
+  variant,
   size = 'md',
   className = ''
 }) => {
-  const clamped = Math.max(0, Math.min(100, Math.round(percentage)));
+  const calcPct = percentage !== undefined
+    ? percentage
+    : value !== undefined
+    ? (value / (max || 1)) * 100
+    : 0;
 
+  const clamped = Math.max(0, Math.min(100, Math.round(calcPct)));
+  const chosenColor = variant || color || 'emerald';
+  const colorClass = COLOR_MAP[chosenColor] || 'bg-emerald-500';
   const heightStyle = size === 'sm' ? 'h-1.5' : size === 'lg' ? 'h-3.5' : 'h-2.5';
 
   return (
@@ -43,7 +58,7 @@ export const ProgressBar: React.FC<Props> = ({
       <div className={`w-full bg-gray-100 dark:bg-[#0D1117] rounded-full overflow-hidden border border-gray-200 dark:border-[#21262D] ${heightStyle}`}>
         <div
           style={{ width: `${clamped}%` }}
-          className={`${heightStyle} ${COLOR_MAP[color]} rounded-full transition-all duration-300 ease-out`}
+          className={`${heightStyle} ${colorClass} rounded-full transition-all duration-300 ease-out`}
         />
       </div>
     </div>

@@ -6,6 +6,8 @@ interface Props {
   description: string;
   icon?: LucideIcon;
   action?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
   className?: string;
 }
 
@@ -14,10 +16,15 @@ export const EmptyState: React.FC<Props> = ({
   description,
   icon: Icon = Inbox,
   action,
+  actionLabel,
+  onAction,
   className = ''
 }) => {
   return (
-    <div className={`bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-3xl p-12 text-center shadow-sm flex flex-col items-center justify-center max-w-lg mx-auto ${className}`}>
+    <div
+      data-empty-state="true"
+      className={`bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-3xl p-10 text-center shadow-sm flex flex-col items-center justify-center max-w-lg mx-auto ${className}`}
+    >
       <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] flex items-center justify-center text-gray-400 dark:text-[#8B949E] mb-4">
         <Icon size={24} />
       </div>
@@ -28,6 +35,14 @@ export const EmptyState: React.FC<Props> = ({
         {description}
       </p>
       {action && <div className="mt-5">{action}</div>}
+      {!action && actionLabel && onAction && (
+        <button
+          onClick={onAction}
+          className="mt-4 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer"
+        >
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 };

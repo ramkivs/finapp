@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { queries } from '../application';
+import { KpiCard } from '../components/ui/KpiCard';
 import { SipCalculator } from '../components/calculators/SipCalculator';
 import { LumpsumCalculator } from '../components/calculators/LumpsumCalculator';
 import { XirrCalculator } from '../components/calculators/XirrCalculator';
 import { CagrCalculator } from '../components/calculators/CagrCalculator';
 import { LoanEmiCalculator } from '../components/calculators/LoanEmiCalculator';
-import { TrendingUp, Landmark, Calculator, Percent, CreditCard, Activity } from 'lucide-react';
+import { TrendingUp, Landmark, Calculator, Percent, CreditCard, Activity, Clock, Layers } from 'lucide-react';
 
 export const CalculatorsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'sip' | 'lumpsum' | 'xirr' | 'cagr' | 'loan'>('sip');
@@ -18,10 +19,10 @@ export const CalculatorsPage: React.FC = () => {
     <div className="space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-          Financial Calculators & Interactive Compounding Hub
+        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          Financial Calculators & Compounding Hub
         </h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
           Institutional-grade modeling tools: SIP with annual step-up, lumpsum compounding, irregular cash-flow XIRR, CAGR, and loan amortization.
         </p>
       </div>
@@ -32,9 +33,9 @@ export const CalculatorsPage: React.FC = () => {
           <button
             id="calc-tab-sip"
             onClick={() => setActiveTab('sip')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'sip'
-                ? 'border-green-600 text-green-700 dark:text-green-400'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -45,9 +46,9 @@ export const CalculatorsPage: React.FC = () => {
           <button
             id="calc-tab-lumpsum"
             onClick={() => setActiveTab('lumpsum')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'lumpsum'
-                ? 'border-green-600 text-green-700 dark:text-green-400'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -58,9 +59,9 @@ export const CalculatorsPage: React.FC = () => {
           <button
             id="calc-tab-xirr"
             onClick={() => setActiveTab('xirr')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'xirr'
-                ? 'border-green-600 text-green-700 dark:text-green-400'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -71,9 +72,9 @@ export const CalculatorsPage: React.FC = () => {
           <button
             id="calc-tab-cagr"
             onClick={() => setActiveTab('cagr')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'cagr'
-                ? 'border-green-600 text-green-700 dark:text-green-400'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -84,9 +85,9 @@ export const CalculatorsPage: React.FC = () => {
           <button
             id="calc-tab-loan"
             onClick={() => setActiveTab('loan')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs border-b-2 transition whitespace-nowrap cursor-pointer ${
               activeTab === 'loan'
-                ? 'border-green-600 text-green-700 dark:text-green-400'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
                 : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
@@ -97,7 +98,7 @@ export const CalculatorsPage: React.FC = () => {
       </div>
 
       {/* Active Calculator Workspace */}
-      <div>
+      <div className="min-h-[400px]">
         {activeTab === 'sip' && <SipCalculator />}
         {activeTab === 'lumpsum' && <LumpsumCalculator />}
         {activeTab === 'xirr' && <XirrCalculator />}
@@ -105,51 +106,83 @@ export const CalculatorsPage: React.FC = () => {
         {activeTab === 'loan' && <LoanEmiCalculator />}
       </div>
 
+      {/* Planned / Upcoming Institutional Calculators Hub */}
+      <div className="bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800/80 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Layers size={16} className="text-emerald-500" />
+            <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+              Expanded Mathematical Engine Roadmap
+            </h3>
+          </div>
+          <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1">
+            <Clock size={12} /> Institutional Modules
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {[
+            { name: 'Recurring Deposit (RD)', tag: 'Coming Soon', desc: 'Quarterly compounding' },
+            { name: 'Public Provident Fund', tag: 'Coming Soon', desc: 'Section 80C & EEE' },
+            { name: 'Systematic Withdrawal (SWP)', tag: 'Coming Soon', desc: 'Annuity cash flow' },
+            { name: 'Retirement Corpus & FIRE', tag: 'Coming Soon', desc: 'Monte Carlo simulation' },
+            { name: 'Target Goal Planner', tag: 'Coming Soon', desc: 'Reverse SIP solver' }
+          ].map((calc, idx) => (
+            <div
+              key={idx}
+              className="p-3 bg-white dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/60 rounded-xl space-y-1 opacity-75"
+            >
+              <div className="flex justify-between items-start gap-1">
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-200 line-clamp-1">{calc.name}</span>
+              </div>
+              <p className="text-[10px] text-gray-400">{calc.desc}</p>
+              <span className="inline-block px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-bold">
+                {calc.tag}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Supporting Institutional Derived Metrics */}
-      <div className="pt-8 border-t border-gray-200 dark:border-gray-800 space-y-4">
+      <div className="pt-6 border-t border-gray-200 dark:border-gray-800 space-y-4">
         <div className="flex items-center gap-2">
-          <Activity size={16} className="text-gray-500" />
-          <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
+          <Activity size={16} className="text-emerald-500" />
+          <h3 className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-wider">
             Canonical Derived Metrics (Live Ledger Synchronization)
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              Dividend Yield Calculator
-            </div>
-            <div className="text-2xl font-black text-gray-900 dark:text-white mb-2">
-              {yieldMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${yieldMetric.value}%`}
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold">
-              TTM Yield on Invested Capital
-            </span>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KpiCard
+            label="Dividend Yield (TTM)"
+            value={yieldMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `${yieldMetric.value}%`}
+            change={yieldMetric.status === 'RECONCILED' ? 'TTM Yield on Capital' : undefined}
+            changeType="neutral"
+            status={yieldMetric.status}
+            accentColor="emerald"
+            tooltip="Trailing 12-month dividend yield calculated from canonical income ledger"
+          />
 
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              Net Worth CAGR
-            </div>
-            <div className="text-2xl font-black text-gray-900 dark:text-white mb-2">
-              {cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 text-xs font-bold">
-              1-Year Compound Growth
-            </span>
-          </div>
+          <KpiCard
+            label="Net Worth CAGR"
+            value={cagrMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : `+${cagrMetric.value}%`}
+            change={cagrMetric.status === 'RECONCILED' ? 'Compound Annual Growth' : undefined}
+            changeType={Number(cagrMetric.value) >= 0 ? 'positive' : 'negative'}
+            status={cagrMetric.status}
+            accentColor="cyan"
+            tooltip="Annualized compound growth rate across persistent net worth snapshots"
+          />
 
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-              Emergency Fund Goal
-            </div>
-            <div className="text-2xl font-black text-gray-900 dark:text-white mb-2">
-              {goalMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : goalMetric.value}
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs font-bold">
-              6 Months Essential EMIs
-            </span>
-          </div>
+          <KpiCard
+            label="Emergency Fund Goal"
+            value={goalMetric.status === 'NOT_CONFIGURED' ? 'Not configured' : goalMetric.value}
+            change={goalMetric.status === 'RECONCILED' ? '6 Months Essential EMIs' : undefined}
+            changeType="neutral"
+            status={goalMetric.status}
+            accentColor="amber"
+            tooltip="Baseline 6-month essential living and debt commitment reserves"
+          />
         </div>
       </div>
     </div>

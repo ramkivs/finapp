@@ -92,7 +92,7 @@ export const Sidebar: React.FC<Props> = ({
         {onCloseMobile && (
           <button
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 text-[#8B949E] hover:text-white rounded-lg hover:bg-[#21262D] transition"
+            className="md:hidden p-1.5 text-[#8B949E] hover:text-white rounded-lg hover:bg-[#21262D] transition cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -107,9 +107,10 @@ export const Sidebar: React.FC<Props> = ({
           return (
             <button
               key={item.id}
+              id={`sidebar-nav-${item.id}`}
               onClick={() => handleNavClick(item.id)}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer ${
                 active
                   ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
                   : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
@@ -134,9 +135,10 @@ export const Sidebar: React.FC<Props> = ({
           return (
             <button
               key={item.id}
+              id={`sidebar-nav-${item.id}`}
               onClick={() => handleNavClick(item.id)}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer ${
                 active
                   ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
                   : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
@@ -156,18 +158,20 @@ export const Sidebar: React.FC<Props> = ({
         )}
 
         <button
+          id="btn-load-demo-data"
           onClick={handleLoadDemo}
           title={isCollapsed ? 'Load Demo Data' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-green-400 bg-green-950/20 hover:bg-green-900/40 border border-green-900/30 transition-all duration-150 ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-green-400 bg-green-950/20 hover:bg-green-900/40 border border-green-900/30 transition-all duration-150 cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
           <Database size={17} />
           {!isCollapsed && <span>Load Demo Data</span>}
         </button>
 
         <button
+          id="btn-clear-dev-data"
           onClick={handleClearData}
           title={isCollapsed ? 'Clear Dev Data' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 transition-all duration-150 ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 transition-all duration-150 cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
           <Trash2 size={17} />
           {!isCollapsed && <span>Clear Dev Data</span>}
@@ -176,7 +180,7 @@ export const Sidebar: React.FC<Props> = ({
         <button
           onClick={() => alert('What\'s New (v3.0): Next-Gen Unified Dark Financial Intelligence Dashboard with zero-dependency responsive charts.')}
           title={isCollapsed ? "What's New" : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
           <Sparkles size={17} />
           {!isCollapsed && <span>What's New</span>}
@@ -185,7 +189,7 @@ export const Sidebar: React.FC<Props> = ({
         <button
           onClick={() => alert('Settings: Global privacy persistence enabled in localStorage (finapp.privacy.masked).')}
           title={isCollapsed ? 'Settings' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
           <Settings size={17} />
           {!isCollapsed && <span>Settings</span>}
@@ -197,7 +201,7 @@ export const Sidebar: React.FC<Props> = ({
         <button
           onClick={() => alert('Feedback: Thank you! We read every suggestion from our community.')}
           title={isCollapsed ? 'Feedback' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
           <MessageSquare size={17} />
           {!isCollapsed && <span>Feedback</span>}
@@ -205,8 +209,9 @@ export const Sidebar: React.FC<Props> = ({
 
         {onToggleCollapse && (
           <button
+            id="btn-collapse-sidebar"
             onClick={onToggleCollapse}
-            className="hidden md:flex w-full items-center justify-center py-2 rounded-xl text-xs font-bold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition"
+            className="hidden md:flex w-full items-center justify-center py-2 rounded-xl text-xs font-bold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition cursor-pointer"
             title={isCollapsed ? 'Expand Sidebar (240px)' : 'Collapse Sidebar (72px)'}
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -231,7 +236,7 @@ export const Sidebar: React.FC<Props> = ({
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity cursor-pointer"
             onClick={onCloseMobile}
           />
           <div className="relative w-[260px] max-w-[80vw] h-full shadow-2xl z-50">
