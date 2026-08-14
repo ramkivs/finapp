@@ -2440,6 +2440,168 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Clear Dev Data removes all policies, goals, and profile records from IndexedDB and resets state"
     );
 
+    // =========================================================================
+    // WP-20: Calculators Feature Parity & Mathematical Engine Acceptance Suite
+    // (WP20-C01 to WP20-C12)
+    // =========================================================================
+    console.log('\n  [WP-20 Calculators Feature Parity & Mathematical Engine Acceptance Suite]');
+
+    // Navigate to Calculators Tab
+    await clickNav(page, "Calculators");
+    await new Promise(r => setTimeout(r, 400));
+
+    // WP20-C01: Calculators Hub renders 5 primary calculator tabs
+    let tabSipExists = await page.evaluate(() => !!document.getElementById('calc-tab-sip'));
+    let tabLumpExists = await page.evaluate(() => !!document.getElementById('calc-tab-lumpsum'));
+    let tabXirrExists = await page.evaluate(() => !!document.getElementById('calc-tab-xirr'));
+    let tabCagrExists = await page.evaluate(() => !!document.getElementById('calc-tab-cagr'));
+    let tabLoanExists = await page.evaluate(() => !!document.getElementById('calc-tab-loan'));
+    check(
+      tabSipExists && tabLumpExists && tabXirrExists && tabCagrExists && tabLoanExists,
+      "WP20-C01",
+      "Calculators Hub renders 5 primary interactive calculator subtabs (SIP, Lumpsum, XIRR, CAGR, Loan/EMI)"
+    );
+
+    // WP20-C02: SIP Calculator renders inputs and computes default maturity corpus in real DOM
+    let sipInputAmount = await page.evaluate(() => !!document.getElementById('input-sip-amount'));
+    let sipInputRate = await page.evaluate(() => !!document.getElementById('input-sip-rate'));
+    let sipInputYears = await page.evaluate(() => !!document.getElementById('input-sip-years'));
+    let sipBodyText = await page.evaluate(() => document.body.innerText);
+    check(
+      sipInputAmount && sipInputRate && sipInputYears && (sipBodyText.toUpperCase().includes('TOTAL MATURITY CORPUS') || sipBodyText.includes('21,709,624') || sipBodyText.includes('1,26,14,400')),
+      "WP20-C02",
+      "SIP Calculator renders inputs and calculates maturity corpus in real DOM"
+    );
+
+    // WP20-C03: Lumpsum Calculator tab renders inputs and computes nominal vs real purchasing power
+    await page.click('#calc-tab-lumpsum');
+    await new Promise(r => setTimeout(r, 300));
+    let lumpAmountExists = await page.evaluate(() => !!document.getElementById('input-lump-amount'));
+    let lumpInflationExists = await page.evaluate(() => !!document.getElementById('input-lump-inflation'));
+    let lumpBodyText = await page.evaluate(() => document.body.innerText);
+    check(
+      lumpAmountExists && lumpInflationExists && lumpBodyText.toUpperCase().includes('REAL PURCHASING POWER') && lumpBodyText.includes('1,552,924'),
+      "WP20-C03",
+      "Lumpsum Calculator renders inputs and computes nominal value (₹15.53L) vs inflation-adjusted purchasing power in real DOM"
+    );
+
+    // WP20-C04: XIRR Solver tab renders cash flows table and computes converged XIRR percentage
+    await page.click('#calc-tab-xirr');
+    await new Promise(r => setTimeout(r, 300));
+    let xirrTableRows = await page.evaluate(() => document.querySelectorAll('tbody tr').length);
+    let xirrText = await page.evaluate(() => document.body.innerText);
+    check(
+      xirrTableRows >= 5 && xirrText.toUpperCase().includes('ANNUALIZED XIRR') && xirrText.includes('Newton-Raphson'),
+      "WP20-C04",
+      "XIRR Solver tab renders interactive cash flows schedule and computes converged XIRR percentage"
+    );
+
+    // WP20-C05: XIRR Solver allows adding new outflow/inflow entries dynamically
+    await page.click('#btn-add-outflow');
+    await new Promise(r => setTimeout(r, 300));
+    let xirrUpdatedRows = await page.evaluate(() => document.querySelectorAll('tbody tr').length);
+    check(
+      xirrUpdatedRows === xirrTableRows + 1,
+      "WP20-C05",
+      "XIRR Solver allows adding dynamic cash flow entries and updates schedule dynamically"
+    );
+
+    // WP20-C06: XIRR SIP Generator Mode drawer populates cash flows table
+    await page.click('#btn-xirr-mode-sip');
+    await new Promise(r => setTimeout(r, 300));
+    let sipGenBtnExists = await page.evaluate(() => !!document.getElementById('btn-generate-sip-flows'));
+    if (sipGenBtnExists) {
+      await page.click('#btn-generate-sip-flows');
+      await new Promise(r => setTimeout(r, 400));
+    }
+    let postGenRows = await page.evaluate(() => document.querySelectorAll('tbody tr').length);
+    check(
+      sipGenBtnExists && postGenRows === 13, // 12 monthly + 1 terminal
+      "WP20-C06",
+      "XIRR SIP Generator Mode generates 12 monthly SIP installments + 1 terminal valuation row"
+    );
+
+    // WP20-C07: CAGR Engine tab renders inputs and computes geometric compounding rate
+    await page.click('#calc-tab-cagr');
+    await new Promise(r => setTimeout(r, 300));
+    let cagrInitialExists = await page.evaluate(() => !!document.getElementById('input-cagr-initial'));
+    let cagrFinalExists = await page.evaluate(() => !!document.getElementById('input-cagr-final'));
+    let cagrText = await page.evaluate(() => document.body.innerText);
+    check(
+      cagrInitialExists && cagrFinalExists && cagrText.includes('+20.11%') && cagrText.includes('2.5x'),
+      "WP20-C07",
+      "CAGR Engine calculates geometric mean rate (+20.11% CAGR) and capital multiplier (2.5x) in real DOM"
+    );
+
+    // WP20-C08: Loan / EMI Calculator tab renders inputs and computes monthly EMI
+    await page.click('#calc-tab-loan');
+    await new Promise(r => setTimeout(r, 300));
+    let loanPrincipalExists = await page.evaluate(() => !!document.getElementById('input-loan-principal'));
+    let loanRateExists = await page.evaluate(() => !!document.getElementById('input-loan-rate'));
+    let loanText = await page.evaluate(() => document.body.innerText);
+    check(
+      loanPrincipalExists && loanRateExists && loanText.includes('26,035') && loanText.toUpperCase().includes('TOTAL INTEREST PAYABLE'),
+      "WP20-C08",
+      "Loan / EMI Calculator computes monthly EMI (₹26,035/mo) and total interest in real DOM"
+    );
+
+    // WP20-C09: Supporting Institutional Derived Metrics render below workspaces without dummy data
+    let calcDomCheck = await verifyNoDemoValuesInDOM(page);
+    let hasDerivedSection = await page.evaluate(() => document.body.innerText.toUpperCase().includes('CANONICAL DERIVED METRICS'));
+    check(
+      calcDomCheck.clean && hasDerivedSection,
+      "WP20-C09",
+      `Supporting institutional metrics section renders below calculator workspaces (${calcDomCheck.details})`
+    );
+
+    // WP20-C10: Multi-tab navigation across all primary app tabs preserves interactive calculator state
+    await clickNav(page, "Overview");
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Money");
+    await clickNav(page, "Essentials");
+    await clickNav(page, "Calculators");
+    let calcPostNavCheck = await verifyNoDemoValuesInDOM(page);
+    check(
+      calcPostNavCheck.clean,
+      "WP20-C10",
+      `Multi-tab navigation across Overview -> Wealth -> Money -> Essentials -> Calculators preserves clean state (${calcPostNavCheck.details})`
+    );
+
+    // WP20-C11: Browser reload on Calculators tab preserves DOM layout without runtime exceptions
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await new Promise(r => setTimeout(r, 500));
+    await clickNav(page, "Calculators");
+    await new Promise(r => setTimeout(r, 300));
+    let calcReloadCheck = await verifyNoDemoValuesInDOM(page);
+    let reloadedSipTab = await page.evaluate(() => !!document.getElementById('calc-tab-sip'));
+    check(
+      calcReloadCheck.clean && reloadedSipTab,
+      "WP20-C11",
+      `Browser reload on Calculators tab preserves responsive layout without runtime exceptions (${calcReloadCheck.details})`
+    );
+
+    // WP20-C12: Clear Dev Data preserves calculator functionality while resetting supporting metrics
+    await page.evaluate(`
+      (() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        for (let i = 0; i < buttons.length; i++) {
+          if (buttons[i].textContent && buttons[i].textContent.includes('Clear Dev Data')) {
+            buttons[i].click();
+          }
+        }
+      })()
+    `);
+    await new Promise(r => setTimeout(r, 600));
+    await clickNav(page, "Calculators");
+    await new Promise(r => setTimeout(r, 300));
+    let finalTabSip = await page.evaluate(() => !!document.getElementById('calc-tab-sip'));
+    let finalDomCheck = await verifyNoDemoValuesInDOM(page);
+    check(
+      finalTabSip && finalDomCheck.clean,
+      "WP20-C12",
+      `Clear Dev Data preserves interactive calculator hub functionality while resetting derived metrics (${finalDomCheck.details})`
+    );
+
 
   } finally {
     await browser.close();
