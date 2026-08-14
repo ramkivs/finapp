@@ -17,17 +17,17 @@ export const WealthHealthCard: React.FC<Props> = ({ assets, liabilities, snapsho
 
   if (health.status === 'NOT_CONFIGURED') {
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+      <div className="bg-[#161B22] border border-[#21262D] rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Activity className="text-gray-400" size={18} />
-            <h3 className="font-bold text-gray-900 dark:text-white text-base">Wealth Health & Diagnostics</h3>
+          <div className="flex items-center gap-2">
+            <Activity className="text-[#8B949E]" size={16} />
+            <h3 className="font-bold text-[#F0F6FC] text-xs uppercase tracking-wider">Wealth Health & Diagnostics</h3>
           </div>
-          <span className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold">
+          <span className="px-2 py-0.5 rounded-full bg-[#21262D] text-[#8B949E] text-[10px] font-bold">
             Not Configured
           </span>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+        <p className="text-xs text-[#8B949E] mt-1.5">
           Add assets and liabilities to calculate debt solvency, liquidity cushion, and portfolio health diagnostics.
         </p>
       </div>
@@ -35,106 +35,106 @@ export const WealthHealthCard: React.FC<Props> = ({ assets, liabilities, snapsho
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm space-y-6">
+    <div className="bg-[#161B22] border border-[#21262D] rounded-2xl p-4 shadow-sm space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2.5">
-          <Activity className="text-green-700 dark:text-green-400" size={18} />
+        <div className="flex items-center gap-2">
+          <Activity className="text-[#23C55E]" size={16} />
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-white text-base">Wealth Health & Solvency Diagnostics</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Canonical balance sheet ratios and structural resilience</p>
+            <h3 className="font-bold text-[#F0F6FC] text-xs uppercase tracking-wider">Wealth Health & Solvency Diagnostics</h3>
+            <p className="text-[11px] text-[#8B949E]">Canonical balance sheet ratios and structural resilience</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
             liabDiag.burdenLevel === 'LOW'
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              ? 'bg-green-950/30 text-[#23C55E] border border-green-800/30'
               : liabDiag.burdenLevel === 'MODERATE'
-              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400'
-              : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
+              ? 'bg-amber-950/30 text-[#F59E0B] border border-amber-800/30'
+              : 'bg-rose-950/30 text-rose-400 border border-rose-800/30'
           }`}>
             {liabDiag.burdenLevel === 'LOW' ? 'Low Leverage Solvency' : liabDiag.burdenLevel === 'MODERATE' ? 'Moderate Debt Burden' : 'Elevated Debt Ratio'}
           </span>
 
-          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
             dataQuality.status === 'COMPLETE'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+              ? 'bg-blue-950/30 text-[#4F8CFF] border border-blue-800/30'
               : dataQuality.status === 'PARTIAL'
-              ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400'
+              ? 'bg-[#21262D] text-[#8B949E]'
+              : 'bg-amber-950/30 text-[#F59E0B] border border-amber-800/30'
           }`}>
             Metadata: {dataQuality.completenessScore}%
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Debt-to-Asset Ratio */}
-        <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between">
+        <div className="bg-[#0D1117] border border-[#21262D]/60 rounded-xl p-3 flex flex-col justify-between">
           <div>
-            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="text-[10px] font-bold text-[#8B949E] uppercase tracking-wider">
               Debt-to-Asset Ratio
             </div>
-            <div className="text-2xl font-black text-gray-900 dark:text-white mt-1">
+            <div className="text-xl font-black text-[#F0F6FC] mt-0.5">
               {Math.round(health.debtToAssetRatio)}%
             </div>
           </div>
-          <div className="mt-3">
-            <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="mt-2">
+            <div className="h-1.5 w-full bg-[#21262D] rounded-full overflow-hidden">
               <div
                 style={{ width: `${Math.min(health.debtToAssetRatio, 100)}%` }}
                 className={`h-full ${
                   health.debtToAssetRatio > 40
-                    ? 'bg-rose-600'
+                    ? 'bg-rose-500'
                     : health.debtToAssetRatio > 20
-                    ? 'bg-amber-500'
-                    : 'bg-green-600'
+                    ? 'bg-[#F59E0B]'
+                    : 'bg-[#23C55E]'
                 }`}
               />
             </div>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block font-medium">
+            <span className="text-[10px] text-[#8B949E] mt-1 block font-medium">
               Liabilities / Assets
             </span>
           </div>
         </div>
 
         {/* Liquid Cash Reserves */}
-        <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between">
+        <div className="bg-[#0D1117] border border-[#21262D]/60 rounded-xl p-3 flex flex-col justify-between">
           <div>
-            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="text-[10px] font-bold text-[#8B949E] uppercase tracking-wider">
               Liquid Reserve Cushion
             </div>
-            <div className="text-2xl font-black text-green-700 dark:text-green-400 mt-1">
+            <div className="text-xl font-black text-[#23C55E] mt-0.5">
               <CurrencyValue value={health.liquidReserve} />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 block">
+          <div className="mt-2">
+            <span className="text-[10px] font-bold text-[#06B6D4] block">
               {Math.round(health.liquidRatio)}% of total asset base
             </span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 block">
+            <span className="text-[9px] text-[#6E7681] block">
               Cash & Savings classification
             </span>
           </div>
         </div>
 
         {/* Top Asset Concentration */}
-        <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-col justify-between">
+        <div className="bg-[#0D1117] border border-[#21262D]/60 rounded-xl p-3 flex flex-col justify-between">
           <div>
-            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="text-[10px] font-bold text-[#8B949E] uppercase tracking-wider">
               Top Asset Concentration
             </div>
-            <div className="text-2xl font-black text-gray-900 dark:text-white mt-1">
+            <div className="text-xl font-black text-[#F0F6FC] mt-0.5">
               {Math.round(health.topAssetConcentration)}%
             </div>
           </div>
-          <div className="mt-3">
-            <span className={`text-[11px] font-bold block ${
-              health.topAssetConcentration > 40 ? 'text-amber-600 dark:text-amber-400' : 'text-green-700 dark:text-green-400'
+          <div className="mt-2">
+            <span className={`text-[10px] font-bold block ${
+              health.topAssetConcentration > 40 ? 'text-[#F59E0B]' : 'text-[#23C55E]'
             }`}>
               {health.topAssetConcentration > 40 ? 'Concentrated single asset' : 'Balanced distribution'}
             </span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 block">
+            <span className="text-[9px] text-[#6E7681] block">
               Largest holding vs portfolio
             </span>
           </div>
