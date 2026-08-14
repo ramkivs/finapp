@@ -82,25 +82,8 @@ export const OverviewPage: React.FC = () => {
     }
   };
 
-  // Derive Top Accounts from canonical stores (accounts or distinct transactions accounts)
-  const derivedAccounts = React.useMemo(() => {
-    if (accounts.length > 0) {
-      return accounts.slice(0, 4);
-    }
-    if (transactions.length > 0) {
-      const distinctNames = Array.from(new Set(transactions.map(t => t.account).filter(Boolean)));
-      const bankAsset = assets.find(a => a.name.toLowerCase().includes('bank'));
-      const totalBankAmt = bankAsset ? bankAsset.amount : 482910;
-      const weights = [0.38, 0.28, 0.22, 0.12];
-      return distinctNames.slice(0, 4).map((name, idx) => ({
-        id: `derived-acc-${idx}`,
-        name: `${name} - ${idx === 0 ? 'Salary' : idx === 1 ? 'Savings' : 'Checking'}`,
-        type: idx === 0 ? 'Salary' : idx === 1 ? 'Savings' : 'Checking',
-        openingBalance: Math.round(totalBankAmt * (weights[idx] || 0.1))
-      }));
-    }
-    return [];
-  }, [accounts, transactions, assets]);
+  // Registered Bank Accounts from Canonical Repository (Strictly Zero Fabrication)
+  const registeredAccounts = accounts;
 
   // Render pure SVG Net Worth Trend Area Chart (Prototype Exact Composition & Scaling)
   const renderNetWorthTrend = () => {
@@ -477,16 +460,16 @@ export const OverviewPage: React.FC = () => {
               </a>
             </div>
 
-            {derivedAccounts.length === 0 ? (
+            {registeredAccounts.length === 0 ? (
               <div className="py-6 text-center text-xs text-[#8B949E] space-y-2">
                 <p>No accounts registered.</p>
-                <a href="#money" className="inline-block px-3 py-1 bg-[#0D1117] border border-[#21262D] rounded-lg text-[11px] font-bold text-[#4F8CFF]">
+                <a href="#money" className="inline-block px-3 py-1 bg-[#0D1117] border border-[#21262D] rounded-lg text-[11px] font-bold text-[#4F8CFF] hover:border-[#30363D] transition">
                   + Link Account
                 </a>
               </div>
             ) : (
               <div className="space-y-2">
-                {derivedAccounts.map(acc => (
+                {registeredAccounts.map(acc => (
                   <div key={acc.id} className="flex items-center justify-between py-1.5 px-2 rounded-xl bg-[#0D1117] border border-[#21262D]/60 text-xs">
                     <div className="flex items-center gap-2 truncate">
                       <Landmark size={13} className="text-[#4F8CFF] flex-shrink-0" />
@@ -519,20 +502,11 @@ export const OverviewPage: React.FC = () => {
             </div>
 
             {goals.length === 0 ? (
-              <div className="space-y-2.5 py-1">
-                {[
-                  { name: 'Emergency Reserve', pct: 60, current: '₹1.8L / ₹3.0L', color: 'emerald' as const },
-                  { name: 'Retirement Corpus', pct: 42, current: '₹21L / ₹50L', color: 'cyan' as const },
-                  { name: 'Home Purchase', pct: 65, current: '₹32L / ₹50L', color: 'blue' as const }
-                ].map((g, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs items-center">
-                      <span className="font-bold text-[#F0F6FC] truncate">{g.name}</span>
-                      <span className="font-bold text-[#23C55E] text-[11px]">{g.pct}%</span>
-                    </div>
-                    <ProgressBar percentage={g.pct} size="sm" variant={g.color} />
-                  </div>
-                ))}
+              <div className="py-6 text-center text-xs text-[#8B949E] space-y-2">
+                <p>No financial goals configured.</p>
+                <a href="#essentials" className="inline-block px-3 py-1 bg-[#0D1117] border border-[#21262D] rounded-lg text-[11px] font-bold text-[#23C55E] hover:border-[#30363D] transition">
+                  + Set Financial Goal
+                </a>
               </div>
             ) : (
               <div className="space-y-2.5">
