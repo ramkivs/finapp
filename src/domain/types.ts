@@ -509,3 +509,81 @@ export interface HealthScoreBreakdown {
   insuranceAdequacyScore: number; // max 25
   explanations: string[];
 }
+
+/* =========================================================================
+   WP-20: CALCULATOR DOMAIN TYPES & INTERFACES
+   ========================================================================= */
+
+export interface CashFlowEntry {
+  id: string;
+  date: string;
+  amount: number; // Negative for outflows / investments, positive for inflows / redemptions
+  description?: string;
+}
+
+export interface XirrCalculationResult {
+  xirr: number; // Annualized percentage e.g. 14.25
+  totalInvested: number;
+  totalWithdrawn: number;
+  currentValue: number;
+  netGain: number;
+  isValid: boolean;
+  error?: string;
+}
+
+export interface SipBreakdownYear {
+  year: number;
+  invested: number;
+  value: number;
+  interestEarned: number;
+  monthlyInstallment: number;
+}
+
+export interface SipCalculationResult {
+  totalInvested: number;
+  estimatedReturns: number;
+  totalValue: number;
+  yearlyBreakdown: SipBreakdownYear[];
+}
+
+export interface LumpsumBreakdownYear {
+  year: number;
+  invested: number;
+  value: number;
+  interestEarned: number;
+}
+
+export interface LumpsumCalculationResult {
+  investedAmount: number;
+  estimatedReturns: number;
+  totalValue: number;
+  realPurchasingPower: number;
+  absoluteGrowthMultiple: number;
+  yearlyBreakdown: LumpsumBreakdownYear[];
+}
+
+export interface CagrCalculationResult {
+  cagr: number; // Annualized percentage e.g. 15.5
+  absoluteGrowthPct: number;
+  multiplier: number;
+  isValid: boolean;
+  error?: string;
+}
+
+export interface AmortizationScheduleRow {
+  month: number;
+  year: number;
+  openingBalance: number;
+  emi: number;
+  principalComponent: number;
+  interestComponent: number;
+  closingBalance: number;
+}
+
+export interface LoanEmiCalculationResult {
+  monthlyEmi: number;
+  totalInterest: number;
+  totalAmount: number;
+  interestPrincipalRatio: number; // Total Interest / Principal
+  schedule: AmortizationScheduleRow[];
+}

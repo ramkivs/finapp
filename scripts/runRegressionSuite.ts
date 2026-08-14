@@ -1950,6 +1950,238 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP19-C10'
   );
 
+  // 16. WP-20: Calculators Feature Parity & Mathematical Engine Acceptance Suite (WP20-C01 to WP20-C20)
+  console.log('\n16. [WP-20: Calculators Feature Parity & Mathematical Engine Acceptance Suite (WP20-C01 to WP20-C20)]');
+
+  const { CalculatorsService } = await import('../src/services/CalculatorsService');
+
+  // C01 — Calculators Hub Structure & Availability
+  assert(
+    typeof CalculatorsService.calculateSip === 'function' &&
+    typeof CalculatorsService.calculateLumpsum === 'function' &&
+    typeof CalculatorsService.calculateXirr === 'function' &&
+    typeof CalculatorsService.calculateCagr === 'function' &&
+    typeof CalculatorsService.calculateLoanEmi === 'function',
+    'Calculators hub domain services render: SIP, Lumpsum, XIRR, CAGR, Loan/EMI plus supporting metrics',
+    'WP20-C01'
+  );
+
+  // C02 — Standard SIP calculation is mathematically correct
+  const sipResult = CalculatorsService.calculateSip(25000, 12, 15, 0);
+  assert(
+    sipResult.totalInvested === 4500000 &&
+    sipResult.totalValue === 12614400 &&
+    sipResult.estimatedReturns === 8114400,
+    'Standard SIP calculation is mathematically correct (₹25k / mo @ 12% over 15 yrs = ₹1.26 Cr)',
+    'WP20-C02'
+  );
+
+  // C03 — Annual step-up dynamically increases monthly contributions correctly
+  const sipStepUp = CalculatorsService.calculateSip(25000, 12, 15, 10);
+  assert(
+    sipStepUp.totalInvested === 9531745 &&
+    sipStepUp.totalValue === 21709624 &&
+    sipStepUp.estimatedReturns === 12177879,
+    'Annual step-up dynamically increases monthly contributions correctly (10% step-up = ₹2.17 Cr)',
+    'WP20-C03'
+  );
+
+  // C04 — SIP year-by-year projection reconciles invested capital and gains
+  assert(
+    sipResult.yearlyBreakdown.length === 15 &&
+    sipResult.yearlyBreakdown[0].year === 1 &&
+    sipResult.yearlyBreakdown[14].year === 15 &&
+    sipResult.yearlyBreakdown[14].value === 12614400 &&
+    sipResult.yearlyBreakdown[14].invested === 4500000,
+    'SIP year-by-year projection reconciles invested capital and gains across 15 years',
+    'WP20-C04'
+  );
+
+  // C05 — Lumpsum future value and wealth gain are correct
+  const lumpsumResult = CalculatorsService.calculateLumpsum(500000, 12, 10, 6);
+  assert(
+    lumpsumResult.investedAmount === 500000 &&
+    lumpsumResult.totalValue === 1552924 &&
+    lumpsumResult.estimatedReturns === 1052924,
+    'Lumpsum future value and wealth gain are correct (₹5L @ 12% over 10 yrs = ₹15.53L)',
+    'WP20-C05'
+  );
+
+  // C06 — Inflation-adjusted purchasing power is correct
+  assert(
+    lumpsumResult.realPurchasingPower === 867145 &&
+    lumpsumResult.absoluteGrowthMultiple === 3.11,
+    'Inflation-adjusted purchasing power and growth multiple are correct (Real FV: ₹8.67L, Multiple: 3.11x)',
+    'WP20-C06'
+  );
+
+  // C07 — XIRR solves investment + redemption correctly
+  const xirrSingle = CalculatorsService.calculateXirr([
+    { id: '1', date: '2024-01-01', amount: -100000 },
+    { id: '2', date: '2025-01-01', amount: 120000 }
+  ]);
+  assert(
+    xirrSingle.isValid &&
+    xirrSingle.xirr >= 19.9 &&
+    xirrSingle.xirr <= 20.1,
+    'XIRR solves investment + redemption correctly via Newton-Raphson solver',
+    'WP20-C07'
+  );
+
+  // C08 — XIRR handles staggered investments / dividends / withdrawals
+  const xirrMulti = CalculatorsService.calculateXirr([
+    { id: '1', date: '2024-01-01', amount: -50000 },
+    { id: '2', date: '2024-06-01', amount: -25000 },
+    { id: '3', date: '2025-01-01', amount: -25000 },
+    { id: '4', date: '2025-08-01', amount: 5000 },
+    { id: '5', date: '2026-08-01', amount: 125000 }
+  ]);
+  assert(
+    xirrMulti.isValid &&
+    xirrMulti.totalInvested === 100000 &&
+    xirrMulti.totalWithdrawn === 130000 &&
+    xirrMulti.netGain === 30000 &&
+    xirrMulti.xirr > 0,
+    'XIRR handles staggered investments, intermediate dividends, and terminal valuation accurately',
+    'WP20-C08'
+  );
+
+  // C09 — XIRR rejects invalid sign structures and non-convergent cases
+  const xirrInvalidAllPos = CalculatorsService.calculateXirr([
+    { id: '1', date: '2024-01-01', amount: 50000 },
+    { id: '2', date: '2025-01-01', amount: 60000 }
+  ]);
+  const xirrInvalidSingle = CalculatorsService.calculateXirr([
+    { id: '1', date: '2024-01-01', amount: -50000 }
+  ]);
+  assert(
+    !xirrInvalidAllPos.isValid &&
+    !xirrInvalidSingle.isValid &&
+    typeof xirrInvalidAllPos.error === 'string',
+    'XIRR rejects invalid sign structures (all positive/all negative) and single flows with structured errors',
+    'WP20-C09'
+  );
+
+  // C10 — XIRR handles monthly SIP stream + terminal valuation
+  const sipFlows = Array.from({ length: 12 }, (_, i) => ({
+    id: `sip-${i + 1}`,
+    date: `2025-${String(i + 1).padStart(2, '0')}-01`,
+    amount: -10000
+  }));
+  sipFlows.push({
+    id: 'sip-term',
+    date: '2026-01-01',
+    amount: 135000
+  });
+  const xirrSip = CalculatorsService.calculateXirr(sipFlows);
+  assert(
+    xirrSip.isValid &&
+    xirrSip.totalInvested === 120000 &&
+    xirrSip.totalWithdrawn === 135000 &&
+    xirrSip.xirr > 0,
+    'XIRR handles monthly SIP stream + terminal valuation correctly',
+    'WP20-C10'
+  );
+
+  // C11 — CAGR computes annualized growth correctly
+  const cagrResult = CalculatorsService.calculateCagr(100000, 250000, 5);
+  assert(
+    cagrResult.isValid &&
+    cagrResult.cagr === 20.11,
+    'CAGR computes annualized growth correctly (100k -> 250k in 5 yrs = +20.11% CAGR)',
+    'WP20-C11'
+  );
+
+  // C12 — CAGR calculates absolute return and multiplier correctly
+  assert(
+    cagrResult.absoluteGrowthPct === 150.0 &&
+    cagrResult.multiplier === 2.5,
+    'CAGR calculates absolute return (+150%) and multiplier (2.5x) correctly',
+    'WP20-C12'
+  );
+
+  // C13 — CAGR rejects invalid inputs without exceptions or NaN
+  const cagrInvalidNeg = CalculatorsService.calculateCagr(-50000, 100000, 3);
+  const cagrInvalidZeroYear = CalculatorsService.calculateCagr(100000, 200000, 0);
+  assert(
+    !cagrInvalidNeg.isValid &&
+    !cagrInvalidZeroYear.isValid &&
+    cagrInvalidNeg.cagr === 0 &&
+    !isNaN(cagrInvalidNeg.cagr),
+    'CAGR rejects invalid inputs (negative beginning, 0 years) without throwing unhandled exceptions or NaN',
+    'WP20-C13'
+  );
+
+  // C14 — Loan EMI calculation is correct
+  const loanResult = CalculatorsService.calculateLoanEmi(3000000, 8.5, 240);
+  assert(
+    loanResult.monthlyEmi === 26035,
+    'Loan EMI calculation is correct (₹30L @ 8.5% over 20 yrs = ₹26,035 / mo)',
+    'WP20-C14'
+  );
+
+  // C15 — Total interest and total repayment reconcile
+  assert(
+    loanResult.totalInterest === 3248212 &&
+    loanResult.totalAmount === 6248212,
+    'Total interest (₹32.48L) and total repayment (₹62.48L) reconcile with principal (₹30L)',
+    'WP20-C15'
+  );
+
+  // C16 — Monthly amortization schedule reconciles across full tenure
+  assert(
+    loanResult.schedule.length === 240 &&
+    loanResult.schedule[0].openingBalance === 3000000 &&
+    loanResult.schedule[239].closingBalance === 0,
+    'Monthly amortization schedule reconciles across full tenure (240 months, final balance = 0)',
+    'WP20-C16'
+  );
+
+  // C17 — Interest/principal ratio is correct
+  assert(
+    loanResult.interestPrincipalRatio === 1.08,
+    'Interest/principal ratio is correct (1.08x)',
+    'WP20-C17'
+  );
+
+  // C18 — Calculator execution cannot mutate canonical financial stores
+  const preCalcAssets = repository.assets.findAllSync().length;
+  const preCalcLiabs = repository.liabilities.findAllSync().length;
+  const preCalcTxs = repository.transactions.findAllSync().length;
+  CalculatorsService.calculateSip(50000, 15, 20, 10);
+  CalculatorsService.calculateLoanEmi(5000000, 9.0, 180);
+  CalculatorsService.calculateXirr(sipFlows);
+  assert(
+    repository.assets.findAllSync().length === preCalcAssets &&
+    repository.liabilities.findAllSync().length === preCalcLiabs &&
+    repository.transactions.findAllSync().length === preCalcTxs,
+    'Calculator execution cannot mutate canonical financial stores (assets, liabilities, transactions side-effect free)',
+    'WP20-C18'
+  );
+
+  // C19 — Supporting canonical metrics query the authoritative repository correctly
+  const calcYieldMetric = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const calcCagrMetric = queries.getMetric('NET_WORTH_CAGR');
+  const calcGoalMetric = queries.getMetric('EMERGENCY_FUND_GOAL');
+  assert(
+    typeof calcYieldMetric.status === 'string' &&
+    typeof calcCagrMetric.status === 'string' &&
+    typeof calcGoalMetric.status === 'string',
+    'Supporting canonical metrics query the authoritative repository correctly (Yield, CAGR, Emergency Goal)',
+    'WP20-C19'
+  );
+
+  // C20 — Clear Dev Data leaves calculators functional and supporting canonical metrics correctly NOT_CONFIGURED
+  await repository.clearLocalData();
+  const postClearSip = CalculatorsService.calculateSip(10000, 12, 5, 0);
+  const postClearYield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  assert(
+    postClearSip.totalValue > 0 &&
+    postClearYield.status === 'NOT_CONFIGURED',
+    'Clear Dev Data leaves calculators functional and supporting canonical metrics correctly NOT_CONFIGURED',
+    'WP20-C20'
+  );
+
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');
