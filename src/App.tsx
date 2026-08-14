@@ -9,15 +9,17 @@ import { ImportPage } from './pages/ImportPage';
 import { CalculatorsPage } from './pages/CalculatorsPage';
 import { IncomeModal, ExpenseModal, TransferModal } from './components/Modals';
 import { CustomDateModal } from './components/CustomDateModal';
+import { ShieldCheck } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('money');
   const [isDark, setIsDark] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('finapp.theme') === 'dark' ||
-        (!localStorage.getItem('finapp.theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const stored = localStorage.getItem('finapp.theme');
+      if (stored === 'light') return false;
+      return true; // Institutional dark is the authoritative default
     }
-    return false;
+    return true;
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
@@ -53,7 +55,7 @@ export function App() {
       />
 
       {/* Main Workspace Canvas */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Header
           toggleDark={toggleDark}
           isDark={isDark}
@@ -70,6 +72,27 @@ export function App() {
           {activeTab === 'import' && <ImportPage />}
           {activeTab === 'calculators' && <CalculatorsPage />}
         </main>
+
+        {/* Global Institutional Footer */}
+        <footer className="mt-auto border-t border-[#21262D] bg-[#161B22] px-6 py-4 text-xs text-[#8B949E]">
+          <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+            <div className="font-semibold text-[#F0F6FC] flex items-center gap-1.5 justify-center">
+              <span>FinBoom</span>
+              <span className="text-[#8B949E]">— Your Financial Command Center</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] justify-center">
+              <span className="inline-flex items-center gap-1 text-[#23C55E]">
+                <ShieldCheck size={14} />
+                <span>All data is encrypted and stored locally</span>
+              </span>
+              <span>•</span>
+              <span>You own your data</span>
+            </div>
+            <div className="text-[11px] font-bold tracking-wider text-[#6E7681] uppercase">
+              Build. Grow. Prosper.
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* Reusable Modals (Preserving All Certified Contracts) */}

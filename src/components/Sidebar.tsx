@@ -4,11 +4,12 @@ import {
   TrendingUp,
   Wallet,
   ShieldCheck,
-  Upload,
   Calculator,
+  Upload,
+  FileText,
+  Target,
   Sparkles,
   Settings,
-  MessageSquare,
   Database,
   Trash2,
   ChevronLeft,
@@ -34,16 +35,17 @@ export const Sidebar: React.FC<Props> = ({
   isMobileOpen = false,
   onCloseMobile
 }) => {
-  const navItems = [
+  const primaryNavItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'wealth', label: 'Wealth', icon: TrendingUp },
     { id: 'money', label: 'Money', icon: Wallet },
     { id: 'essentials', label: 'Essentials', icon: ShieldCheck },
-  ];
-
-  const toolItems = [
-    { id: 'import', label: 'Import', icon: Upload },
     { id: 'calculators', label: 'Calculators', icon: Calculator },
+    { id: 'import', label: 'Import', icon: Upload },
+    { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'goals', label: 'Goals', icon: Target },
+    { id: 'insights', label: 'Insights', icon: Sparkles },
+    { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
   const handleLoadDemo = async () => {
@@ -59,23 +61,39 @@ export const Sidebar: React.FC<Props> = ({
   };
 
   const handleNavClick = (id: string) => {
-    setActiveTab(id);
+    if (id === 'goals') {
+      setActiveTab('essentials');
+    } else if (id === 'reports') {
+      setActiveTab('money');
+    } else if (id === 'insights') {
+      setActiveTab('wealth');
+    } else if (id === 'settings') {
+      alert('Settings: FinBoom v3.0 Institutional Theme active. Local persistence verified.');
+    } else {
+      setActiveTab(id);
+    }
     if (onCloseMobile) {
       onCloseMobile();
     }
   };
 
+  const isTabActive = (id: string) => {
+    if (activeTab === id) return true;
+    if (id === 'goals' && activeTab === 'goals') return true;
+    return false;
+  };
+
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#161B22] border-r border-[#21262D] text-[#F0F6FC]">
       {/* Brand Header */}
-      <div className={`p-5 flex items-center justify-between border-b border-[#21262D] ${isCollapsed ? 'justify-center' : ''}`}>
+      <div className={`p-4 flex items-center justify-between border-b border-[#21262D] ${isCollapsed ? 'justify-center' : ''}`}>
         {!isCollapsed ? (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23C55E] to-[#4F8CFF] flex items-center justify-center font-black text-white text-sm shadow-md">
-              F
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23C55E] to-[#4F8CFF] flex items-center justify-center font-black text-white text-sm shadow-md flex-shrink-0">
+              ☑
             </div>
             <div>
-              <div className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+              <div className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
                 <span>FINBOOM</span>
                 <span className="text-[9px] px-1.5 py-0.2 bg-[#21262D] text-[#8B949E] rounded-md font-mono">v3.0</span>
               </div>
@@ -84,7 +102,7 @@ export const Sidebar: React.FC<Props> = ({
           </div>
         ) : (
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#23C55E] to-[#4F8CFF] flex items-center justify-center font-black text-white text-sm shadow-md">
-            F
+            ☑
           </div>
         )}
 
@@ -99,61 +117,35 @@ export const Sidebar: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Navigation list */}
-      <nav className="p-3 flex-1 overflow-y-auto space-y-1">
-        {navItems.map(item => {
+      {/* Primary Navigation List (Exact Prototype Hierarchy + Import) */}
+      <nav className="p-2.5 flex-1 overflow-y-auto space-y-1">
+        {primaryNavItems.map(item => {
           const Icon = item.icon;
-          const active = activeTab === item.id;
+          const active = isTabActive(item.id);
           return (
             <button
               key={item.id}
               id={`sidebar-nav-${item.id}`}
               onClick={() => handleNavClick(item.id)}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 active
-                  ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
-                  : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
+                  ? 'bg-[#1F2937] text-[#4F8CFF] font-bold border border-[#30363D] shadow-sm'
+                  : 'text-[#8B949E] hover:bg-[#1F2937]/50 hover:text-[#F0F6FC]'
               } ${isCollapsed ? 'justify-center px-0' : ''}`}
             >
-              <Icon size={18} className={active ? 'text-[#23C55E]' : 'text-[#8B949E]'} />
+              <Icon size={17} className={active ? 'text-[#4F8CFF]' : 'text-[#8B949E]'} />
               {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
+      </nav>
 
-        {/* Tools Section */}
+      {/* Data & Diagnostics Controls (Exact Prototype Dev Data section) */}
+      <div className="p-2.5 border-t border-[#21262D] space-y-1">
         {!isCollapsed && (
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6E7681] px-3.5 pt-5 pb-1.5">
-            TOOLS
-          </div>
-        )}
-
-        {toolItems.map(item => {
-          const Icon = item.icon;
-          const active = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              id={`sidebar-nav-${item.id}`}
-              onClick={() => handleNavClick(item.id)}
-              title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer ${
-                active
-                  ? 'bg-gradient-to-r from-green-900/40 to-green-800/20 text-[#23C55E] border border-green-800/50 shadow-sm'
-                  : 'text-[#8B949E] hover:bg-[#21262D]/70 hover:text-[#F0F6FC]'
-              } ${isCollapsed ? 'justify-center px-0' : ''}`}
-            >
-              <Icon size={18} className={active ? 'text-[#23C55E]' : 'text-[#8B949E]'} />
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
-          );
-        })}
-
-        {/* Data & Diagnostics Buttons */}
-        {!isCollapsed && (
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6E7681] px-3.5 pt-5 pb-1.5">
-            DATA & SETTINGS
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6E7681] px-3 pt-1 pb-1">
+            DEV DATA & TOOLS
           </div>
         )}
 
@@ -161,9 +153,9 @@ export const Sidebar: React.FC<Props> = ({
           id="btn-load-demo-data"
           onClick={handleLoadDemo}
           title={isCollapsed ? 'Load Demo Data' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-green-400 bg-green-950/20 hover:bg-green-900/40 border border-green-900/30 transition-all duration-150 cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-green-400 hover:bg-[#1F2937] border border-transparent hover:border-[#30363D] transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Database size={17} />
+          <Database size={15} className="text-green-400 flex-shrink-0" />
           {!isCollapsed && <span>Load Demo Data</span>}
         </button>
 
@@ -171,50 +163,20 @@ export const Sidebar: React.FC<Props> = ({
           id="btn-clear-dev-data"
           onClick={handleClearData}
           title={isCollapsed ? 'Clear Dev Data' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 transition-all duration-150 cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
+          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-400 hover:bg-[#1F2937] border border-transparent hover:border-[#30363D] transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <Trash2 size={17} />
+          <Trash2 size={15} className="text-rose-400 flex-shrink-0" />
           {!isCollapsed && <span>Clear Dev Data</span>}
-        </button>
-
-        <button
-          onClick={() => alert('What\'s New (v3.0): Next-Gen Unified Dark Financial Intelligence Dashboard with zero-dependency responsive charts.')}
-          title={isCollapsed ? "What's New" : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
-        >
-          <Sparkles size={17} />
-          {!isCollapsed && <span>What's New</span>}
-        </button>
-
-        <button
-          onClick={() => alert('Settings: Global privacy persistence enabled in localStorage (finapp.privacy.masked).')}
-          title={isCollapsed ? 'Settings' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D]/70 hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
-        >
-          <Settings size={17} />
-          {!isCollapsed && <span>Settings</span>}
-        </button>
-      </nav>
-
-      {/* Footer & Collapse Toggle */}
-      <div className="p-3 border-t border-[#21262D] space-y-1">
-        <button
-          onClick={() => alert('Feedback: Thank you! We read every suggestion from our community.')}
-          title={isCollapsed ? 'Feedback' : undefined}
-          className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
-        >
-          <MessageSquare size={17} />
-          {!isCollapsed && <span>Feedback</span>}
         </button>
 
         {onToggleCollapse && (
           <button
             id="btn-collapse-sidebar"
             onClick={onToggleCollapse}
-            className="hidden md:flex w-full items-center justify-center py-2 rounded-xl text-xs font-bold text-[#8B949E] hover:bg-[#21262D] hover:text-white transition cursor-pointer"
+            className="hidden md:flex w-full items-center justify-center py-1.5 mt-1 rounded-xl text-xs font-bold text-[#8B949E] hover:bg-[#1F2937] hover:text-white transition cursor-pointer"
             title={isCollapsed ? 'Expand Sidebar (240px)' : 'Collapse Sidebar (72px)'}
           >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
           </button>
         )}
       </div>

@@ -16,14 +16,14 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
   const ranges = ['This Month', 'Last Month', '3M', '6M', '12M', 'YTD'];
 
   return (
-    <header className="h-16 bg-white dark:bg-[#161B22] border-b border-gray-200 dark:border-[#21262D] flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 transition-colors duration-150">
+    <header className="h-16 bg-[#161B22] border-b border-[#21262D] flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 transition-colors duration-150">
       {/* Left Area: Mobile Hamburger Menu & Active Scope Indicators */}
       <div className="flex items-center gap-3">
         {onOpenMobile && (
           <button
             id="btn-mobile-menu-toggle"
             onClick={onOpenMobile}
-            className="md:hidden p-2 rounded-xl text-gray-500 dark:text-[#8B949E] hover:bg-gray-100 dark:hover:bg-[#21262D] transition cursor-pointer"
+            className="md:hidden p-2 rounded-xl text-[#8B949E] hover:bg-[#21262D] hover:text-white transition cursor-pointer"
             title="Open Menu"
           >
             <Menu size={20} />
@@ -35,19 +35,19 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
           <button
             id="btn-account-context-dropdown"
             onClick={() => { setShowAccountMenu(!showAccountMenu); setShowDateMenu(false); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] text-xs font-bold text-gray-700 dark:text-[#F0F6FC] hover:border-gray-300 dark:hover:border-[#30363D] transition cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D1117] border border-[#21262D] text-xs font-bold text-[#F0F6FC] hover:border-[#30363D] transition cursor-pointer"
           >
             <Wallet size={13} className="text-[#4F8CFF]" />
             <span>All Accounts</span>
-            <span className="text-[10px] text-gray-400 font-mono">({accounts.length})</span>
-            <ChevronDown size={12} className="text-gray-400" />
+            <span className="text-[10px] text-[#8B949E] font-mono">({accounts.length})</span>
+            <ChevronDown size={12} className="text-[#8B949E]" />
           </button>
 
           {showAccountMenu && (
-            <div className="absolute left-0 top-10 w-52 bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
+            <div className="absolute left-0 top-10 w-52 bg-[#161B22] border border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
               <button
                 onClick={() => setShowAccountMenu(false)}
-                className="w-full text-left px-3 py-2 rounded-xl bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold cursor-pointer"
+                className="w-full text-left px-3 py-2 rounded-xl bg-green-900/30 text-[#23C55E] font-bold cursor-pointer"
               >
                 All Accounts ({accounts.length})
               </button>
@@ -55,7 +55,7 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
                 <button
                   key={a.id}
                   onClick={() => setShowAccountMenu(false)}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] text-gray-700 dark:text-gray-300 font-medium truncate cursor-pointer"
+                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#21262D] text-[#8B949E] hover:text-[#F0F6FC] font-medium truncate cursor-pointer"
                 >
                   {a.name}
                 </button>
@@ -69,23 +69,23 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
           <button
             id="btn-global-date-range-dropdown"
             onClick={() => { setShowDateMenu(!showDateMenu); setShowAccountMenu(false); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] text-xs font-bold text-gray-700 dark:text-[#F0F6FC] hover:border-gray-300 dark:hover:border-[#30363D] transition cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D1117] border border-[#21262D] text-xs font-bold text-[#F0F6FC] hover:border-[#30363D] transition cursor-pointer"
           >
             <Calendar size={13} className="text-[#23C55E]" />
             <span>{dateRange}</span>
-            <ChevronDown size={12} className="text-gray-400" />
+            <ChevronDown size={12} className="text-[#8B949E]" />
           </button>
 
           {showDateMenu && (
-            <div className="absolute left-0 top-10 w-44 bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
+            <div className="absolute left-0 top-10 w-44 bg-[#161B22] border border-[#21262D] rounded-2xl shadow-2xl p-1.5 z-50 text-xs">
               {ranges.map(r => (
                 <button
                   key={r}
                   onClick={() => { setDateRange(r); setShowDateMenu(false); }}
                   className={`w-full text-left px-3 py-1.5 rounded-xl font-bold transition cursor-pointer ${
                     dateRange === r
-                      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : 'hover:bg-gray-100 dark:hover:bg-[#21262D] text-gray-700 dark:text-gray-300'
+                      ? 'bg-green-900/30 text-[#23C55E]'
+                      : 'hover:bg-[#21262D] text-[#8B949E] hover:text-[#F0F6FC]'
                   }`}
                 >
                   {r}
@@ -102,7 +102,7 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
         <button
           id="btn-theme-toggle"
           onClick={toggleDark}
-          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition cursor-pointer"
+          className="w-9 h-9 rounded-xl hover:bg-[#21262D] border border-transparent hover:border-[#21262D] flex items-center justify-center text-[#8B949E] hover:text-white transition cursor-pointer"
           title="Toggle Light / Dark Theme"
         >
           {isDark ? <Sun size={17} /> : <Moon size={17} />}
@@ -112,7 +112,7 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
         <button
           id="btn-privacy-toggle"
           onClick={togglePrivacy}
-          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition cursor-pointer"
+          className="w-9 h-9 rounded-xl hover:bg-[#21262D] border border-transparent hover:border-[#21262D] flex items-center justify-center text-[#8B949E] hover:text-white transition cursor-pointer"
           title="Mask / Unmask Financial Figures (Persistent)"
         >
           {privacyMasked ? <EyeOff size={17} className="text-[#F59E0B]" /> : <Eye size={17} />}
@@ -121,8 +121,8 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
         {/* Notification Bell */}
         <button
           id="btn-notifications"
-          onClick={() => alert('Notification: August Dividend from ITC Ltd (₹2,100) reconciled into canonical ledger.')}
-          className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-[#21262D] border border-transparent hover:border-gray-200 dark:hover:border-[#21262D] flex items-center justify-center text-gray-500 dark:text-[#8B949E] hover:text-gray-900 dark:hover:text-white transition relative cursor-pointer"
+          onClick={() => alert('Notification: Trailing dividend income reconciled into canonical ledger.')}
+          className="w-9 h-9 rounded-xl hover:bg-[#21262D] border border-transparent hover:border-[#21262D] flex items-center justify-center text-[#8B949E] hover:text-white transition relative cursor-pointer"
           title="Notifications"
         >
           <Bell size={17} />
@@ -135,12 +135,12 @@ export const Header: React.FC<Props> = ({ toggleDark, isDark, onOpenMobile }) =>
         <div
           id="btn-user-profile"
           onClick={() => alert('Profile: Ramakrishnan VS (Pro Member) • FinBoom v3.0 Production Active')}
-          className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-gray-100 dark:bg-[#0D1117] border border-gray-200 dark:border-[#21262D] cursor-pointer hover:border-gray-300 dark:hover:border-[#30363D] transition"
+          className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-[#0D1117] border border-[#21262D] cursor-pointer hover:border-[#30363D] transition"
         >
           <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#4F8CFF] to-[#06B6D4] text-white font-bold text-[11px] flex items-center justify-center shadow-sm">
             R
           </div>
-          <span className="text-xs font-bold text-gray-800 dark:text-[#F0F6FC] hidden md:inline">
+          <span className="text-xs font-bold text-[#F0F6FC] hidden md:inline">
             Ramakrishnan VS
           </span>
         </div>
