@@ -556,7 +556,7 @@ export const WealthPage: React.FC = () => {
                   onClick={() => setSubTab(tab.id)}
                   className={`py-3 font-bold text-xs tracking-wider uppercase border-b-2 transition -mb-px flex items-center gap-2 whitespace-nowrap outline-none cursor-pointer ${
                     isActive
-                      ? 'border-[#23C55E] text-[#23C55E]'
+                      ? 'border-green-500 text-green-400'
                       : 'border-transparent text-[#8B949E] hover:text-[#F0F6FC] hover:border-[#30363D]'
                   }`}
                 >
@@ -623,7 +623,7 @@ export const WealthPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           <div className="bg-[#161B22] border border-[#21262D] rounded-2xl p-4 shadow-sm">
             <div className="text-[11px] font-bold text-[#8B949E] uppercase tracking-wider mb-1">
-              Reconciled 12-Month Dividend
+              Reconciled 12-Month Total Dividend
             </div>
             <div className="text-2xl font-black text-[#F0F6FC] mb-2">
               <CurrencyValue value={ttmMetric.value} />
@@ -647,7 +647,7 @@ export const WealthPage: React.FC = () => {
 
           <div className="bg-[#161B22] border border-[#21262D] rounded-2xl p-4 shadow-sm">
             <div className="text-[11px] font-bold text-[#8B949E] uppercase tracking-wider mb-1">
-              {`${currentMonthLabel} (MTD*)`}
+              {`${currentMonthLabel} (Ongoing Month - MTD)`}
             </div>
             <div className="text-2xl font-black text-green-400 mb-2">
               <CurrencyValue value={mtdMetric.value} />
