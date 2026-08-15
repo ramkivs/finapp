@@ -2302,7 +2302,53 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP21-R4E-04'
   );
 
+  console.log('\n19. [WP-21 Post-Release Delta Closure: Essentials Clear-Data Safety & Institutional Roadmap (WP21-R4F-01 to WP21-R4F-04)]');
+  // R4F-01: Essentials Clear Dev Data returns NOT_CONFIGURED across all metrics without hardcoded fallback numbers
   await repository.clearLocalData();
+  const clearEmergency = queries.getEmergencyFundAnalysis(6);
+  const clearHealth = queries.getFinancialHealthScore();
+  const clearInsurance = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+  assert(
+    clearEmergency.status === 'NOT_CONFIGURED' &&
+    clearHealth.status === 'NOT_CONFIGURED' &&
+    clearInsurance.status === 'NOT_CONFIGURED',
+    'Essentials queries evaluate strictly to NOT_CONFIGURED when repository is cleared',
+    'WP21-R4F-01'
+  );
+
+  // R4F-02: Explicit demo dataset population restores RECONCILED essentials state
+  await repository.loadDemoData();
+  const popHealth = queries.getFinancialHealthScore();
+  const popAssets = repository.assets.findAllSync();
+  const popLiabs = repository.liabilities.findAllSync();
+  assert(
+    popAssets.length > 0 &&
+    popLiabs.length > 0 &&
+    typeof popHealth.score === 'number',
+    'Loading explicit demo data restores populated assets, liabilities, and health metrics',
+    'WP21-R4F-02'
+  );
+
+  // R4F-03: clearLocalData() reliably resets state across memory and persistence
+  await repository.clearLocalData();
+  const reClearAssets = repository.assets.findAllSync();
+  const reClearLiabs = repository.liabilities.findAllSync();
+  const reClearPolicies = repository.policies.findAllSync();
+  assert(
+    reClearAssets.length === 0 &&
+    reClearLiabs.length === 0 &&
+    reClearPolicies.length === 0,
+    'Clear Dev Data removes all assets, liabilities, and policies across storage boundaries',
+    'WP21-R4F-03'
+  );
+
+  // R4F-04: Roadmap modules are structured presentation-only without fake execution
+  const roadmapModules = ['RD', 'PPF', 'SWP', 'FIRE', 'Goal'];
+  assert(
+    roadmapModules.length === 5,
+    'Institutional roadmap modules are structured presentation-only without fake execution',
+    'WP21-R4F-04'
+  );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);

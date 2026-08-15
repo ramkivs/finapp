@@ -60,10 +60,11 @@ export const EssentialsPage: React.FC = () => {
       ? 'Not configured'
       : `${healthScore.score}`;
 
-  // Deterministic Debt to Assets / Income Ratio
+  // Deterministic Debt to Assets Ratio
   const totalDebt = liabilities.reduce((s, l) => s + l.amount, 0);
   const totalAssets = assets.reduce((s, a) => s + a.amount, 0);
-  const debtRatioPct = totalAssets > 0 ? Math.round((totalDebt / totalAssets) * 100) : 0;
+  const isDebtConfigured = totalAssets > 0 || totalDebt > 0;
+  const debtRatioPct = totalAssets > 0 ? Math.round((totalDebt / totalAssets) * 100) : (totalDebt > 0 ? 100 : 0);
 
   // Render SVG Credit / Health Score History Curve (Prototype Exact 300-900 Scale Composition)
   const renderCreditScoreHistory = () => {
@@ -276,45 +277,45 @@ export const EssentialsPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <KpiCard
           label="Emergency Fund"
-          value={<CurrencyValue value={emergencyAnalysis.liquidReserves || 180000} />}
-          change="6 months covered"
+          value={emergencyAnalysis.status === 'NOT_CONFIGURED' ? 'Not configured' : <CurrencyValue value={emergencyAnalysis.liquidReserves} />}
+          change={emergencyAnalysis.status === 'RECONCILED' ? `${emergencyAnalysis.runwayMonths.toFixed(1)} months covered` : undefined}
           changeType="positive"
-          status="Good"
+          status={emergencyAnalysis.status === 'NOT_CONFIGURED' ? undefined : 'Good'}
           accentColor="emerald"
-          subtitle="● Good"
+          subtitle={emergencyAnalysis.status === 'RECONCILED' ? '● Good' : 'Not configured'}
           tooltip="Liquid reserves divided by monthly baseline expenditures"
         />
 
         <KpiCard
           label="Debt to Assets"
-          value={`${debtRatioPct || 20}%`}
-          change="Low leverage"
-          changeType="positive"
-          status="Excellent"
+          value={!isDebtConfigured ? 'Not configured' : `${debtRatioPct}%`}
+          change={isDebtConfigured ? (debtRatioPct <= 20 ? 'Low leverage' : debtRatioPct <= 50 ? 'Moderate leverage' : 'High leverage') : undefined}
+          changeType={debtRatioPct <= 20 ? 'positive' : debtRatioPct <= 50 ? 'neutral' : 'negative'}
+          status={!isDebtConfigured ? undefined : (debtRatioPct <= 20 ? 'Excellent' : 'Moderate')}
           accentColor="emerald"
-          subtitle="● Excellent"
+          subtitle={isDebtConfigured ? (debtRatioPct <= 20 ? '● Excellent' : '● Moderate') : 'Not configured'}
           tooltip="Total debt obligations relative to the asset base."
         />
 
         <KpiCard
           label="Credit Score"
-          value="752"
-          change="+20 pts vs last month"
-          changeType="positive"
-          status="Good"
+          value={healthScore.status === 'NOT_CONFIGURED' ? 'Not configured' : `${healthScore.score}`}
+          change={healthScore.status !== 'NOT_CONFIGURED' ? '+20 pts vs last month' : undefined}
+          changeType={healthScore.score >= 70 ? 'positive' : healthScore.score >= 40 ? 'neutral' : 'negative'}
+          status={healthScore.status === 'NOT_CONFIGURED' ? undefined : (healthScore.status === 'HEALTHY' ? 'Good' : healthScore.status === 'MODERATE' ? 'Moderate' : 'Needs Attention')}
           accentColor="emerald"
-          subtitle="● Good"
+          subtitle={healthScore.status !== 'NOT_CONFIGURED' ? '● Good' : 'Not configured'}
           tooltip="Holistic creditworthiness and debt servicing rating"
         />
 
         <KpiCard
           label="Insurance Coverage"
-          value={insuranceTotal.status === 'RECONCILED' ? `₹${Number(insuranceTotal.value).toLocaleString('en-IN')}` : '₹1,50,00,000'}
-          change="Life + Health"
+          value={insuranceTotal.status === 'NOT_CONFIGURED' ? 'Not configured' : `₹${Number(insuranceTotal.value).toLocaleString('en-IN')}`}
+          change={insuranceTotal.status === 'RECONCILED' ? 'Life + Health' : undefined}
           changeType="neutral"
-          status="Adequate"
+          status={insuranceTotal.status === 'NOT_CONFIGURED' ? undefined : 'Adequate'}
           accentColor="indigo"
-          subtitle="Adequate"
+          subtitle={insuranceTotal.status === 'RECONCILED' ? 'Adequate' : 'Not configured'}
           tooltip="Sum insured across active Term Life and Health policies"
         />
       </div>
@@ -337,7 +338,7 @@ export const EssentialsPage: React.FC = () => {
         <div>
           <ChartCard
             title="Credit Score History"
-            badgeText="752 Rating"
+            badgeText={healthScore.status === 'NOT_CONFIGURED' ? undefined : `${healthScore.score} Rating`}
           >
             {renderCreditScoreHistory()}
           </ChartCard>
@@ -352,7 +353,9 @@ export const EssentialsPage: React.FC = () => {
           <h3 className="font-bold text-xs text-[#F0F6FC] uppercase tracking-wider">
             Recommendations
           </h3>
-          <span className="text-[10px] text-[#8B949E]">Actionable Financial Plans</span>
+          <span className="text-[10px] text-[#8B949E]">
+            {healthScore.status === 'NOT_CONFIGURED' ? 'Institutional Guidelines' : 'Actionable Financial Plans'}
+          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
