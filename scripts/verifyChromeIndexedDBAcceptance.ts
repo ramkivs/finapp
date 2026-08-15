@@ -2790,6 +2790,70 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       `Zero-leakage data boundary verified across modernized UI: rendered DOM is 100% clean of hardcoded values (${finalZeroLeakCheck.details})`
     );
 
+    // WP21-V13: Essentials Tier 1 Top 4 KPI Cards Architecture
+    await page.evaluate(() => {
+      let el = document.getElementById('sidebar-nav-essentials');
+      if (el) el.click();
+    });
+    await new Promise(r => setTimeout(r, 400));
+    let r4dKpiCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText.toUpperCase();
+      let hasEmergencyKpi = bodyText.includes('EMERGENCY FUND');
+      let hasDebtKpi = bodyText.includes('DEBT TO INC') || bodyText.includes('DEBT TO INCOME');
+      let hasCreditKpi = bodyText.includes('CREDIT SCORE');
+      let hasInsuranceKpi = bodyText.includes('INSURANCE COVERAGE');
+      return hasEmergencyKpi && hasDebtKpi && hasCreditKpi && hasInsuranceKpi;
+    });
+    check(
+      r4dKpiCheck,
+      "WP21-V13",
+      "Essentials Tier 1 renders 4 modern KPI cards (Emergency Fund, Debt to Inc, Credit Score, Insurance Coverage)"
+    );
+
+    // WP21-V14: Essentials Tier 2 Primary Visual Panels (Metrics Table & Credit Score History Curve)
+    let r4dVisualPanelsCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText;
+      let hasMetricsTable = bodyText.includes('Essential Metrics') || bodyText.includes('5 Critical Indicators');
+      let hasCreditHistory = bodyText.includes('Credit Score History');
+      let hasSvgCurve = document.querySelectorAll('svg').length > 0;
+      return hasMetricsTable && hasCreditHistory && hasSvgCurve;
+    });
+    check(
+      r4dVisualPanelsCheck,
+      "WP21-V14",
+      "Essentials Tier 2 renders Essential Metrics structured table and Credit Score History visual panel"
+    );
+
+    // WP21-V15: Essentials Tier 3 Actionable Recommendations Grid
+    let r4dRecsCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText;
+      let hasRecsTitle = bodyText.includes('Recommendations') || bodyText.includes('RECOMMENDATIONS');
+      let hasRec1 = bodyText.includes('Increase Emergency Fund');
+      let hasRec2 = bodyText.includes('Reduce Credit Utilization');
+      let hasRec3 = bodyText.includes('Review Insurance');
+      let hasViewPlanBtns = bodyText.includes('View Plan');
+      return hasRecsTitle && hasRec1 && hasRec2 && hasRec3 && hasViewPlanBtns;
+    });
+    check(
+      r4dRecsCheck,
+      "WP21-V15",
+      "Essentials Tier 3 renders 3 Actionable Recommendations cards with View Plan interaction triggers"
+    );
+
+    // WP21-V16: Essentials Tier 4 Certified WP-19 Subtabs Bar & Workspaces
+    let r4dSubtabsCheck = await page.evaluate(() => {
+      let t1 = document.getElementById('essentials-tab-emergency');
+      let t2 = document.getElementById('essentials-tab-insurance');
+      let t3 = document.getElementById('essentials-tab-goals');
+      let t4 = document.getElementById('essentials-tab-profile');
+      return Boolean(t1 && t2 && t3 && t4);
+    });
+    check(
+      r4dSubtabsCheck,
+      "WP21-V16",
+      "Essentials Tier 4 preserves all 4 WP-19 subtabs and interactive workspace panels"
+    );
+
 
   } finally {
     await browser.close();
