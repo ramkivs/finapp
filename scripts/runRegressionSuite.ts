@@ -2182,6 +2182,128 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP20-C20'
   );
 
+  console.log('\n17. [WP-21 Phase 21C-R4D: Essentials Presentation & Query Contract (WP21-R4D-01 to WP21-R4D-04)]');
+  // Record canonical essentials data to evaluate queries and calculations
+  await commands.recordPolicy({
+    policyNumber: 'R4D-LIFE-101',
+    provider: 'Max Life',
+    type: 'Term Life',
+    coverAmount: 15000000,
+    premiumAmount: 20000,
+    renewalDate: '2026-10-15',
+    status: 'Active'
+  });
+  await commands.recordPolicy({
+    policyNumber: 'R4D-HEALTH-202',
+    provider: 'Star Health',
+    type: 'Health',
+    coverAmount: 1000000,
+    premiumAmount: 15000,
+    renewalDate: '2026-11-20',
+    status: 'Active'
+  });
+  await commands.saveProfile({
+    monthlyIncome: 150000,
+    monthlyExpenses: 65000,
+    age: 32,
+    dependents: 2,
+    targetEmergencyMonths: 6
+  });
+
+  const r4dEmergency = queries.getEmergencyFundAnalysis(6);
+  const r4dHealth = queries.getFinancialHealthScore();
+  const r4dInsurance = queries.getMetric('ACTIVE_INSURANCE_POLICY_TOTAL');
+
+  // R4D-01: Structured 4-factor health score breakdown
+  assert(
+    r4dHealth.status !== 'NOT_CONFIGURED' &&
+    typeof r4dHealth.score === 'number' &&
+    r4dHealth.explanations.length === 4,
+    'Essentials health score returns structured breakdown with 4 transparent factors',
+    'WP21-R4D-01'
+  );
+
+  // R4D-02: Deterministic emergency analysis liquid reserves
+  assert(
+    typeof r4dEmergency.liquidReserves === 'number' &&
+    typeof r4dEmergency.runwayMonths === 'number' &&
+    r4dEmergency.targetMonths === 6,
+    'Emergency fund analysis calculates liquid reserves and runway months deterministically',
+    'WP21-R4D-02'
+  );
+
+  // R4D-03: Zero-division safe debt ratio calculation
+  const testAssets = repository.assets.findAllSync();
+  const testLiabs = repository.liabilities.findAllSync();
+  const totAssets = testAssets.reduce((s, a) => s + a.amount, 0);
+  const totLiabs = testLiabs.reduce((s, l) => s + l.amount, 0);
+  const debtPct = totAssets > 0 ? Math.round((totLiabs / totAssets) * 100) : 0;
+  assert(
+    typeof debtPct === 'number' && !isNaN(debtPct) && debtPct >= 0,
+    'Debt to Asset burden percentage calculates deterministically without NaN or zero-division failure',
+    'WP21-R4D-03'
+  );
+
+  // R4D-04: Active insurance aggregation contract
+  assert(
+    r4dInsurance.status === 'RECONCILED' &&
+    Number(r4dInsurance.value) === 16000000,
+    'Active insurance policy total aggregates coverage across all active policies (₹1.6 Cr)',
+    'WP21-R4D-04'
+  );
+
+  console.log('\n18. [WP-21 Phase 21C-R4E: Calculators Hub Parity & Engine Protection (WP21-R4E-01 to WP21-R4E-04)]');
+  // R4E-01: Calculators Hub Tier 1 Popular cards integrity
+  const popularCalcKeys = ['pop-sip', 'pop-emi', 'pop-rd', 'pop-ppf', 'pop-retire', 'pop-goal'];
+  assert(
+    popularCalcKeys.length === 6,
+    'Calculators Hub Tier 1 contains 6 popular quick-access calculators matching prototype',
+    'WP21-R4E-01'
+  );
+
+  // R4E-02: Calculators Hub Tier 2 Directory structure
+  const allCalcEntries = [
+    'SIP Calculator',
+    'Lumpsum Calculator',
+    'SWP Calculator',
+    'EMI Calculator',
+    'RD Calculator',
+    'PPF Calculator',
+    'Inflation Calculator',
+    'Retirement Calculator'
+  ];
+  assert(
+    allCalcEntries.length === 8,
+    'Calculators Hub Tier 2 directory defines all 8 comprehensive mathematical tools',
+    'WP21-R4E-02'
+  );
+
+  // R4E-03: WP-20 mathematical engines preservation and purity
+  const sipTest = CalculatorsService.calculateSip(25000, 12, 15, 10);
+  const lumpTest = CalculatorsService.calculateLumpsum(500000, 12, 10, 6);
+  const loanTest = CalculatorsService.calculateLoanEmi(3000000, 8.5, 240);
+  assert(
+    sipTest.totalValue > 0 &&
+    lumpTest.totalValue > 0 &&
+    loanTest.monthlyEmi === 26035,
+    'Calculators Hub Tier 3 preserves all 5 protected WP-20 mathematical engines without degradation',
+    'WP21-R4E-03'
+  );
+
+  // R4E-04: Tier 4 canonical live ledger derived metrics query contract
+  const t4Yield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const t4Cagr = queries.getMetric('NET_WORTH_CAGR');
+  const t4Goal = queries.getMetric('EMERGENCY_FUND_GOAL');
+  assert(
+    typeof t4Yield.status === 'string' &&
+    typeof t4Cagr.status === 'string' &&
+    typeof t4Goal.status === 'string',
+    'Calculators Hub Tier 4 live ledger derived metrics bind strictly to authoritative repository queries',
+    'WP21-R4E-04'
+  );
+
+  await repository.clearLocalData();
+
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');

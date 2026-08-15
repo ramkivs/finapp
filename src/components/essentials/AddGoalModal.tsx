@@ -95,6 +95,7 @@ export const AddGoalModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </p>
           </div>
           <button
+            id="btn-close-goal-modal"
             onClick={onClose}
             className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
           >
@@ -229,6 +230,7 @@ export const AddGoalModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
               <div className="flex gap-2">
                 <button
+                  id="btn-cancel-goal-modal"
                   type="button"
                   onClick={onClose}
                   className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-semibold text-gray-700 dark:text-gray-300 transition"
