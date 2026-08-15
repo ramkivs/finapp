@@ -2932,6 +2932,52 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Calculators Hub Tier 4 renders 3 canonical live ledger derived metric cards with real queries"
     );
 
+    // WP21-V21: Essentials Clear Dev Data Empty State & Navigation Lifecycle
+    await page.evaluate(() => {
+      let btn = document.getElementById('btn-clear-dev-data');
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    // Navigate to Overview then back to Essentials
+    await clickNav(page, "Overview");
+    await new Promise(r => setTimeout(r, 400));
+    await clickNav(page, "Essentials");
+    await new Promise(r => setTimeout(r, 400));
+
+    let essentialsEmptyCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText;
+      let notConfiguredCount = (bodyText.match(/Not configured/gi) || []).length;
+      let hasNoLeak180k = !bodyText.includes('180,000') && !bodyText.includes('1,80,000');
+      let hasNoLeak150L = !bodyText.includes('1,50,00,000');
+      let hasNoLeak752 = !bodyText.includes('752') && !bodyText.includes('752 Rating');
+      return notConfiguredCount >= 4 && hasNoLeak180k && hasNoLeak150L && hasNoLeak752;
+    });
+    check(
+      essentialsEmptyCheck,
+      "WP21-V21",
+      "Essentials Clear Dev Data lifecycle displays truthful Not configured empty state without fallback leakage"
+    );
+
+    // WP21-V22: Essentials explicit demo data restoration and re-clear lifecycle
+    await page.evaluate(() => {
+      let btn = document.getElementById('btn-load-demo-data');
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+
+    let demoRestoreCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText;
+      let hasDebtAssets = bodyText.includes('Debt to Assets') || bodyText.includes('DEBT TO ASSETS');
+      let hasCreditScore = bodyText.includes('752');
+      return hasDebtAssets && hasCreditScore;
+    });
+    check(
+      demoRestoreCheck,
+      "WP21-V22",
+      "Essentials explicit demo data restoration successfully populates canonical metrics"
+    );
+
     // Clean up demo data at completion to leave runtime clean
     await page.evaluate(() => {
       let btn = document.getElementById('btn-clear-dev-data');
