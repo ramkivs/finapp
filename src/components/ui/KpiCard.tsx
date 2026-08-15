@@ -106,10 +106,10 @@ export const KpiCard: React.FC<KpiCardProps> = ({
     <div
       data-kpi-card="true"
       title={tooltip}
-      className={`bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-gray-300 dark:hover:border-[#30363D] transition-all duration-150 ${className}`}
+      className={`bg-white dark:bg-[#161B22] border border-gray-200 dark:border-[#21262D] rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-gray-300 dark:hover:border-[#30363D] transition-all duration-150 ${className}`}
     >
       <div>
-        <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
           <span className="text-[11px] font-bold text-gray-500 dark:text-[#8B949E] uppercase tracking-wider block">
             {displayTitle}
           </span>
@@ -124,7 +124,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
         </div>
       </div>
 
-      <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-[#21262D]/60 flex items-center justify-between gap-2 text-xs flex-wrap">
+      <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-[#21262D]/60 flex items-center justify-between gap-2 text-xs flex-wrap">
         {displayChange !== undefined ? (
           <div className="flex items-center gap-1.5">
             <span className={`inline-flex items-center gap-0.5 font-bold text-[11px] px-1.5 py-0.5 rounded-md ${
@@ -137,7 +137,9 @@ export const KpiCard: React.FC<KpiCardProps> = ({
               {isPositive ? <TrendingUp size={12} /> : isNegative ? <TrendingDown size={12} /> : null}
               <span>{displayChange}</span>
             </span>
-            <span className="text-[11px] text-gray-400 dark:text-[#8B949E]">{changePeriod}</span>
+            {changePeriod && changePeriod !== 'vs baseline' && !String(displayChange).toLowerCase().includes('vs') && (
+              <span className="text-[11px] text-gray-400 dark:text-[#8B949E]">{changePeriod}</span>
+            )}
           </div>
         ) : subtitle ? (
           <span className="text-[11px] text-gray-500 dark:text-[#8B949E] font-medium">{subtitle}</span>
