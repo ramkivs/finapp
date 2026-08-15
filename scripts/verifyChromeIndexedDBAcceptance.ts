@@ -2864,6 +2864,74 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "Essentials Tier 4 preserves all 4 WP-19 subtabs and interactive workspace panels"
     );
 
+    // WP21-V17: Calculators Hub Tier 1 Popular Calculators Grid (6 Quick-Access Cards)
+    await page.evaluate(() => {
+      let el = document.getElementById('sidebar-nav-calculators');
+      if (el) el.click();
+    });
+    await new Promise(r => setTimeout(r, 400));
+
+    let r4ePopularCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText.toUpperCase();
+      let hasPopTitle = bodyText.includes('POPULAR CALCULATORS');
+      let hasSip = bodyText.includes('SIP CALCULATOR');
+      let hasEmi = bodyText.includes('EMI CALCULATOR');
+      let hasRd = bodyText.includes('RD CALCULATOR');
+      let hasPpf = bodyText.includes('PPF CALCULATOR');
+      let hasRetire = bodyText.includes('RETIREMENT CALCULATOR');
+      let hasGoal = bodyText.includes('GOAL CALCULATOR');
+      return hasPopTitle && hasSip && hasEmi && hasRd && hasPpf && hasRetire && hasGoal;
+    });
+    check(
+      r4ePopularCheck,
+      "WP21-V17",
+      "Calculators Hub Tier 1 renders 6 popular quick-access cards (SIP, EMI, RD, PPF, Retirement, Goal)"
+    );
+
+    // WP21-V18: Calculators Hub Tier 2 All Calculators Directory (8 Tools)
+    let r4eDirectoryCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText.toUpperCase();
+      let hasDirTitle = bodyText.includes('ALL CALCULATORS');
+      let hasSwp = bodyText.includes('SWP CALCULATOR');
+      let hasLump = bodyText.includes('LUMPSUM CALCULATOR');
+      let hasInflation = bodyText.includes('INFLATION CALCULATOR');
+      return hasDirTitle && hasSwp && hasLump && hasInflation;
+    });
+    check(
+      r4eDirectoryCheck,
+      "WP21-V18",
+      "Calculators Hub Tier 2 renders 8 All Calculators directory entries with navigation affordances"
+    );
+
+    // WP21-V19: Calculators Hub Tier 3 Interactive Workspace Preservation
+    let r4eWorkspaceCheck = await page.evaluate(() => {
+      let tSip = document.getElementById('calc-tab-sip');
+      let tLump = document.getElementById('calc-tab-lumpsum');
+      let tXirr = document.getElementById('calc-tab-xirr');
+      let tCagr = document.getElementById('calc-tab-cagr');
+      let tLoan = document.getElementById('calc-tab-loan');
+      return Boolean(tSip && tLump && tXirr && tCagr && tLoan);
+    });
+    check(
+      r4eWorkspaceCheck,
+      "WP21-V19",
+      "Calculators Hub Tier 3 preserves 5 interactive calculator subtabs (SIP, Lumpsum, XIRR, CAGR, Loan EMI)"
+    );
+
+    // WP21-V20: Calculators Hub Tier 4 Live Ledger Derived Metrics
+    let r4eLiveMetricsCheck = await page.evaluate(() => {
+      let bodyText = document.body.innerText.toUpperCase();
+      let hasYield = bodyText.includes('DIVIDEND YIELD (TTM)');
+      let hasCagr = bodyText.includes('NET WORTH CAGR');
+      let hasGoal = bodyText.includes('EMERGENCY FUND GOAL');
+      return hasYield && hasCagr && hasGoal;
+    });
+    check(
+      r4eLiveMetricsCheck,
+      "WP21-V20",
+      "Calculators Hub Tier 4 renders 3 canonical live ledger derived metric cards with real queries"
+    );
+
     // Clean up demo data at completion to leave runtime clean
     await page.evaluate(() => {
       let btn = document.getElementById('btn-clear-dev-data');

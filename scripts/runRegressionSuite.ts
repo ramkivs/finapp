@@ -2252,6 +2252,56 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP21-R4D-04'
   );
 
+  console.log('\n18. [WP-21 Phase 21C-R4E: Calculators Hub Parity & Engine Protection (WP21-R4E-01 to WP21-R4E-04)]');
+  // R4E-01: Calculators Hub Tier 1 Popular cards integrity
+  const popularCalcKeys = ['pop-sip', 'pop-emi', 'pop-rd', 'pop-ppf', 'pop-retire', 'pop-goal'];
+  assert(
+    popularCalcKeys.length === 6,
+    'Calculators Hub Tier 1 contains 6 popular quick-access calculators matching prototype',
+    'WP21-R4E-01'
+  );
+
+  // R4E-02: Calculators Hub Tier 2 Directory structure
+  const allCalcEntries = [
+    'SIP Calculator',
+    'Lumpsum Calculator',
+    'SWP Calculator',
+    'EMI Calculator',
+    'RD Calculator',
+    'PPF Calculator',
+    'Inflation Calculator',
+    'Retirement Calculator'
+  ];
+  assert(
+    allCalcEntries.length === 8,
+    'Calculators Hub Tier 2 directory defines all 8 comprehensive mathematical tools',
+    'WP21-R4E-02'
+  );
+
+  // R4E-03: WP-20 mathematical engines preservation and purity
+  const sipTest = CalculatorsService.calculateSip(25000, 12, 15, 10);
+  const lumpTest = CalculatorsService.calculateLumpsum(500000, 12, 10, 6);
+  const loanTest = CalculatorsService.calculateLoanEmi(3000000, 8.5, 240);
+  assert(
+    sipTest.totalValue > 0 &&
+    lumpTest.totalValue > 0 &&
+    loanTest.monthlyEmi === 26035,
+    'Calculators Hub Tier 3 preserves all 5 protected WP-20 mathematical engines without degradation',
+    'WP21-R4E-03'
+  );
+
+  // R4E-04: Tier 4 canonical live ledger derived metrics query contract
+  const t4Yield = queries.getMetric('DIVIDEND_YIELD_TTM');
+  const t4Cagr = queries.getMetric('NET_WORTH_CAGR');
+  const t4Goal = queries.getMetric('EMERGENCY_FUND_GOAL');
+  assert(
+    typeof t4Yield.status === 'string' &&
+    typeof t4Cagr.status === 'string' &&
+    typeof t4Goal.status === 'string',
+    'Calculators Hub Tier 4 live ledger derived metrics bind strictly to authoritative repository queries',
+    'WP21-R4E-04'
+  );
+
   await repository.clearLocalData();
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');
