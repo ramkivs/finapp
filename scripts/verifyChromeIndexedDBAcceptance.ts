@@ -2790,38 +2790,48 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       `Zero-leakage data boundary verified across modernized UI: rendered DOM is 100% clean of hardcoded values (${finalZeroLeakCheck.details})`
     );
 
-    // WP21-V13: Essentials Tier 1 Top 4 KPI Cards Architecture
+    // WP21-V13: Essentials Tier 1 Top 4 KPI Cards Architecture (Canonical Debt to Assets)
     await page.evaluate(() => {
       let el = document.getElementById('sidebar-nav-essentials');
       if (el) el.click();
     });
     await new Promise(r => setTimeout(r, 400));
+
+    // Load demo data to verify populated Tier 1 & Tier 2 cards and rows
+    await page.evaluate(() => {
+      let btn = document.getElementById('btn-load-demo-data');
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
+
     let r4dKpiCheck = await page.evaluate(() => {
       let bodyText = document.body.innerText.toUpperCase();
       let hasEmergencyKpi = bodyText.includes('EMERGENCY FUND');
-      let hasDebtKpi = bodyText.includes('DEBT TO INC') || bodyText.includes('DEBT TO INCOME');
+      let hasDebtKpi = bodyText.includes('DEBT TO ASSETS');
       let hasCreditKpi = bodyText.includes('CREDIT SCORE');
       let hasInsuranceKpi = bodyText.includes('INSURANCE COVERAGE');
-      return hasEmergencyKpi && hasDebtKpi && hasCreditKpi && hasInsuranceKpi;
+      let hasDebtValue = bodyText.includes('20%');
+      return hasEmergencyKpi && hasDebtKpi && hasCreditKpi && hasInsuranceKpi && hasDebtValue;
     });
     check(
       r4dKpiCheck,
       "WP21-V13",
-      "Essentials Tier 1 renders 4 modern KPI cards (Emergency Fund, Debt to Inc, Credit Score, Insurance Coverage)"
+      "Essentials Tier 1 renders 4 modern KPI cards (Emergency Fund, Debt to Assets, Credit Score, Insurance Coverage)"
     );
 
     // WP21-V14: Essentials Tier 2 Primary Visual Panels (Metrics Table & Credit Score History Curve)
     let r4dVisualPanelsCheck = await page.evaluate(() => {
       let bodyText = document.body.innerText;
       let hasMetricsTable = bodyText.includes('Essential Metrics') || bodyText.includes('5 Critical Indicators');
+      let hasDebtToAssetRow = bodyText.includes('Debt to Asset Ratio');
       let hasCreditHistory = bodyText.includes('Credit Score History');
       let hasSvgCurve = document.querySelectorAll('svg').length > 0;
-      return hasMetricsTable && hasCreditHistory && hasSvgCurve;
+      return hasMetricsTable && hasDebtToAssetRow && hasCreditHistory && hasSvgCurve;
     });
     check(
       r4dVisualPanelsCheck,
       "WP21-V14",
-      "Essentials Tier 2 renders Essential Metrics structured table and Credit Score History visual panel"
+      "Essentials Tier 2 renders Essential Metrics structured table with Debt to Asset Ratio and Credit Score History visual panel"
     );
 
     // WP21-V15: Essentials Tier 3 Actionable Recommendations Grid
@@ -2853,6 +2863,13 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
       "WP21-V16",
       "Essentials Tier 4 preserves all 4 WP-19 subtabs and interactive workspace panels"
     );
+
+    // Clean up demo data at completion to leave runtime clean
+    await page.evaluate(() => {
+      let btn = document.getElementById('btn-clear-dev-data');
+      if (btn) btn.click();
+    });
+    await new Promise(r => setTimeout(r, 600));
 
 
   } finally {

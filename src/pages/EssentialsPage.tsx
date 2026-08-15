@@ -194,8 +194,8 @@ export const EssentialsPage: React.FC = () => {
       },
       {
         id: 'em-2',
-        title: 'Debt to Income Ratio',
-        subtitle: 'Below 36%',
+        title: 'Debt to Asset Ratio',
+        subtitle: '20% of assets',
         badge: 'Excellent',
         badgeColor: 'bg-green-950/40 text-[#23C55E] border border-green-800/30',
         value: `${debtRatioPct}%`,
@@ -286,14 +286,14 @@ export const EssentialsPage: React.FC = () => {
         />
 
         <KpiCard
-          label="Debt to Inc"
-          value={`${debtRatioPct || 28}%`}
-          change="Below 36%"
+          label="Debt to Assets"
+          value={`${debtRatioPct || 20}%`}
+          change="Low leverage"
           changeType="positive"
           status="Excellent"
           accentColor="emerald"
           subtitle="● Excellent"
-          tooltip="Debt obligation burden relative to capital assets"
+          tooltip="Total debt obligations relative to the asset base."
         />
 
         <KpiCard
