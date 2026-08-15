@@ -14,10 +14,6 @@ import {
   Download,
   ChevronDown,
   Calendar,
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  PieChart,
   ArrowUpRight
 } from 'lucide-react';
 
@@ -97,7 +93,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
 
   const categoryColors = ['#4F8CFF', '#06B6D4', '#F59E0B', '#23C55E', '#EC4899', '#8B5CF6'];
 
-  // Render SVG Grouped Cashflow Overview Bars (Prototype Exact 3-Bar / Multi-Bar Composition)
+  // Render SVG Grouped Cashflow Overview Bars (Prototype Exact 3-Bar Composition)
   const renderCashflowOverview = () => {
     if (insights.status === 'NOT_CONFIGURED' || (insights.totalIncome === 0 && insights.totalExpenses === 0)) {
       return (
@@ -116,12 +112,12 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
     const paddingY = 25;
 
     const maxVal = Math.max(insights.totalIncome, insights.totalExpenses, Math.abs(insights.netCashFlow), 1000);
-    const barWidth = 48;
+    const barWidth = 44;
     const chartHeight = height - 2 * paddingY;
 
-    const incHeight = Math.min(chartHeight, Math.max(8, (insights.totalIncome / maxVal) * chartHeight));
-    const expHeight = Math.min(chartHeight, Math.max(8, (insights.totalExpenses / maxVal) * chartHeight));
-    const netHeight = Math.min(chartHeight, Math.max(8, (Math.abs(insights.netCashFlow) / maxVal) * chartHeight));
+    const incHeight = Math.min(chartHeight, Math.max(6, (insights.totalIncome / maxVal) * chartHeight));
+    const expHeight = Math.min(chartHeight, Math.max(4, (insights.totalExpenses / maxVal) * chartHeight));
+    const netHeight = Math.min(chartHeight, Math.max(6, (Math.abs(insights.netCashFlow) / maxVal) * chartHeight));
 
     const x1 = width * 0.22 - barWidth / 2;
     const x2 = width * 0.50 - barWidth / 2;
@@ -132,15 +128,15 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
     return (
       <div className="w-full flex flex-col justify-between h-full pt-1">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-40 overflow-visible">
-          {/* Background Grid Lines & Y Ticks */}
+          {/* Background Grid Lines & Scaled Y Ticks */}
           <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="#21262D" strokeDasharray="3 3" />
           <text x={paddingX - 6} y={paddingY + 3} textAnchor="end" fill="#6E7681" fontSize="9" fontWeight="600">
-            ₹{(maxVal / 1000).toFixed(0)}K
+            ₹{maxVal >= 100000 ? `${(maxVal / 100000).toFixed(0)}L` : `${(maxVal / 1000).toFixed(0)}K`}
           </text>
 
           <line x1={paddingX} y1={height / 2} x2={width - paddingX} y2={height / 2} stroke="#21262D" strokeDasharray="3 3" />
           <text x={paddingX - 6} y={height / 2 + 3} textAnchor="end" fill="#6E7681" fontSize="9" fontWeight="600">
-            ₹{((maxVal / 2) / 1000).toFixed(0)}K
+            ₹{maxVal >= 100000 ? `${((maxVal / 2) / 100000).toFixed(0)}L` : `${((maxVal / 2) / 1000).toFixed(0)}K`}
           </text>
 
           <line x1={paddingX} y1={yBase} x2={width - paddingX} y2={yBase} stroke="#21262D" />
@@ -153,7 +149,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
               y={yBase - incHeight}
               width={barWidth}
               height={incHeight}
-              rx="6"
+              rx="5"
               fill="#23C55E"
               className="hover:brightness-125 transition-all"
             />
@@ -169,7 +165,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
               y={yBase - expHeight}
               width={barWidth}
               height={expHeight}
-              rx="6"
+              rx="5"
               fill="#EF4444"
               className="hover:brightness-125 transition-all"
             />
@@ -185,7 +181,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
               y={yBase - netHeight}
               width={barWidth}
               height={netHeight}
-              rx="6"
+              rx="5"
               fill={insights.netCashFlow >= 0 ? '#06B6D4' : '#F59E0B'}
               className="hover:brightness-125 transition-all"
             />
@@ -196,7 +192,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
         </svg>
 
         {/* X-Axis Category Labels */}
-        <div className="flex justify-around text-[11px] font-bold text-[#8B949E] px-12 pt-1 border-t border-[#21262D]/60">
+        <div className="flex justify-around text-[10px] font-bold text-[#8B949E] px-12 pt-1 border-t border-[#21262D]/60">
           <span className="text-[#23C55E]">Income</span>
           <span className="text-rose-400">Expenses</span>
           <span className="text-[#06B6D4]">Savings</span>
@@ -307,12 +303,12 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
   return (
     <div className="space-y-4" onClick={() => { setAddMenuOpen(false); setDateMenuOpen(false); }}>
       {/* Title & Action Toolbar */}
-      <div className="flex justify-between items-start flex-wrap gap-3">
+      <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-[#F0F6FC] tracking-tight">
             Money & Cash Flow Command
           </h1>
-          <div className="text-xs text-[#8B949E] mt-0.5">
+          <div className="text-xs text-[#8B949E]">
             Reconciled transaction ledger, category budgets, registered accounts, and cash flow intelligence.
           </div>
         </div>
@@ -320,8 +316,8 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Search Box (visible on transactions tab) */}
           {subTab === 'transactions' && (
-            <div className="bg-[#0D1117] border border-[#21262D] rounded-xl px-3 py-1.5 flex items-center gap-2 w-52 shadow-sm">
-              <Search size={14} className="text-[#8B949E]" />
+            <div className="bg-[#0D1117] border border-[#21262D] rounded-xl px-3 py-1.5 flex items-center gap-2 w-48 shadow-sm">
+              <Search size={13} className="text-[#8B949E]" />
               <input
                 id="transaction-search-input"
                 type="text"
@@ -338,7 +334,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
             <button
               id="btn-export-transactions"
               onClick={handleExport}
-              className="bg-[#161B22] border border-[#21262D] text-[#F0F6FC] font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm hover:bg-[#1F2937] transition cursor-pointer"
+              className="bg-[#161B22] border border-[#21262D] text-[#F0F6FC] font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm hover:bg-[#1F2937] transition cursor-pointer"
             >
               <Download size={13} />
               <span>Export</span>
@@ -350,7 +346,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
             <button
               id="btn-add-menu-dropdown"
               onClick={() => setAddMenuOpen(!addMenuOpen)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
             >
               <span>+ Add</span>
               <ChevronDown size={13} />
@@ -759,8 +755,7 @@ export const MoneyPage: React.FC<Props> = ({ openModal, openSidebarTab }) => {
                                   : 'text-rose-400'
                               }`}
                             >
-                              {isInc ? '+' : isTr ? '' : '-'}
-                              <CurrencyValue value={row.amount} />
+                              {isInc ? '+' : isTr ? '' : '-'}<CurrencyValue value={row.amount} />
                             </td>
                           </tr>
                         );
