@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { CashFlowEntry } from '../../domain/types';
-import { CalculatorsService } from '../../services/CalculatorsService';
+import { FinancialQueries } from '../../application/queries';
 import { CurrencyValue } from '../CurrencyValue';
+import { ProvenanceBadge } from '../ui/ProvenanceBadge';
 import { Calculator, Plus, Trash2, RotateCcw, AlertTriangle, ShieldCheck, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 const DEFAULT_CASH_FLOWS: CashFlowEntry[] = [
@@ -22,7 +23,16 @@ export const XirrCalculator: React.FC = () => {
   const [sipMonths, setSipMonths] = useState<number>(12);
   const [sipTerminalValue, setSipTerminalValue] = useState<number>(135000);
 
-  const result = CalculatorsService.calculateXirr(cashFlows);
+  const calcResult = FinancialQueries.calculateXirr(cashFlows);
+  const isCalculated = calcResult.state === 'VALID' && calcResult.data !== null;
+  const result = calcResult.data || {
+    effectiveAnnualRate: 0,
+    displayRate: '0.00%',
+    totalInvested: 0,
+    totalWithdrawn: 0,
+    netGain: 0,
+    rootStatus: 'NONE' as const
+  };
 
   const handleAddFlow = (isOutflow: boolean) => {
     const newEntry: CashFlowEntry = {
@@ -213,10 +223,10 @@ export const XirrCalculator: React.FC = () => {
             Annualized XIRR
           </span>
           <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400 mt-1">
-            {result.isValid ? `${result.xirr >= 0 ? '+' : ''}${result.xirr}%` : 'Invalid Flow'}
+            {isCalculated ? result.displayRate : 'Invalid Flow'}
           </div>
-          <span className={`text-[10px] font-bold mt-1 block ${result.isValid ? 'text-green-600 dark:text-green-400' : 'text-rose-600'}`}>
-            {result.isValid ? 'Converged via Newton-Raphson' : result.error || 'Error calculating XIRR'}
+          <span className={`text-[10px] font-bold mt-1 block ${isCalculated ? 'text-green-600 dark:text-green-400' : 'text-rose-600'}`}>
+            {isCalculated ? 'Converged via Hardened Newton-Raphson Solver' : calcResult.error?.message || 'Error calculating XIRR'}
           </span>
         </div>
 
@@ -363,6 +373,11 @@ export const XirrCalculator: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Institutional Provenance Badge */}
+      {calcResult.provenance && (
+        <ProvenanceBadge provenance={calcResult.provenance} />
+      )}
     </div>
   );
 };

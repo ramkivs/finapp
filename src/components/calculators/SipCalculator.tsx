@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CalculatorsService } from '../../services/CalculatorsService';
+import { FinancialQueries } from '../../application/queries';
 import { CurrencyValue } from '../CurrencyValue';
+import { ProvenanceBadge } from '../ui/ProvenanceBadge';
 import { TrendingUp, ArrowUpRight, Calendar, PiggyBank, Sparkles } from 'lucide-react';
 
 export const SipCalculator: React.FC = () => {
@@ -10,7 +11,13 @@ export const SipCalculator: React.FC = () => {
   const [stepUpPct, setStepUpPct] = useState<number>(10);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
 
-  const result = CalculatorsService.calculateSip(monthlyInvestment, annualRate, years, stepUpPct);
+  const calcResult = FinancialQueries.calculateSip(monthlyInvestment, annualRate, years, stepUpPct);
+  const result = calcResult.data || {
+    totalInvested: 0,
+    estimatedReturns: 0,
+    totalValue: 0,
+    yearlyBreakdown: []
+  };
 
   const investedPct = result.totalValue > 0
     ? Math.round((result.totalInvested / result.totalValue) * 100)
@@ -241,6 +248,11 @@ export const SipCalculator: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Institutional Provenance Badge */}
+      {calcResult.provenance && (
+        <ProvenanceBadge provenance={calcResult.provenance} />
+      )}
     </div>
   );
 };
