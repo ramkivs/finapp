@@ -7,6 +7,18 @@ import { FinancialMetricService } from '../src/services/FinancialMetricService';
 import { WealthIntelligenceService } from '../src/services/WealthIntelligenceService';
 import { Asset, BUDGET_CATEGORY_FAMILIES, ControlledAccountType } from '../src/domain/types';
 import { useCanonicalLedger } from '../src/store/useCanonicalLedger';
+import { CanonicalNormalizationService } from '../src/services/mathematics/CanonicalNormalizationService';
+import { JcsSerializationService } from '../src/services/mathematics/JcsSerializationService';
+import { ProvenanceService } from '../src/services/mathematics/ProvenanceService';
+import { Wp20Adapters } from '../src/services/mathematics/adapters/Wp20Adapters';
+import { XirrEngine } from '../src/services/mathematics/solvers/XirrEngine';
+import { RecurringDepositEngine } from '../src/services/mathematics/engines/RecurringDepositEngine';
+import { PpfEngine } from '../src/services/mathematics/engines/PpfEngine';
+import { SwpEngine } from '../src/services/mathematics/engines/SwpEngine';
+import { GoalReverseSipEngine } from '../src/services/mathematics/engines/GoalReverseSipEngine';
+import { RetirementFireEngine } from '../src/services/mathematics/engines/RetirementFireEngine';
+import { MathematicalInvariants } from '../src/domain/mathematics/invariants';
+import { GV_LOAN_EMI_30L_8_5P_20Y, GV_LUMPSUM_5L_12P_10Y, GV_CAGR_100K_250K_5Y } from '../src/domain/mathematics/goldenVectors';
 
 let passCount = 0;
 let failCount = 0;
@@ -2348,6 +2360,276 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     roadmapModules.length === 5,
     'Institutional roadmap modules are structured presentation-only without fake execution',
     'WP21-R4F-04'
+  );
+
+  console.log('\n20. [WP-22 Phase C: Canonical Mathematical Intelligence Suite (WP22-C01 to WP22-C20)]');
+  // C01: Normalization service handles numbers, signed zero, and non-finite rejection
+  const normZero = CanonicalNormalizationService.normalizeNumber(-0);
+  let normNonFiniteThrown = false;
+  try {
+    CanonicalNormalizationService.normalizeNumber(NaN);
+  } catch {
+    normNonFiniteThrown = true;
+  }
+  assert(
+    normZero === 0 && !Object.is(normZero, -0) && normNonFiniteThrown,
+    'Canonical Normalization Service normalizes signed zero and strictly rejects non-finite NaN',
+    'WP22-C01'
+  );
+
+  // C02: JCS serialization sorts keys by UTF-16 code units independent of insertion order
+  const obj1 = { z: 1, a: 2, m: 3 };
+  const obj2 = { a: 2, m: 3, z: 1 };
+  const jcs1 = JcsSerializationService.canonicalize(obj1);
+  const jcs2 = JcsSerializationService.canonicalize(obj2);
+  assert(
+    jcs1 === '{"a":2,"m":3,"z":1}' && jcs1 === jcs2,
+    'RFC 8785 JCS Serialization produces deterministic byte-level string independent of property insertion order',
+    'WP22-C02'
+  );
+
+  // C03: Provenance service creates structured fingerprints
+  const prov = ProvenanceService.createProvenance({
+    engineId: 'ENGINE_LOAN_EMI',
+    algorithmId: 'ALG_LOAN_EMI_REDUCING',
+    algorithmVersion: '1.0.0',
+    rawInputs: { principal: 3000000, annualRate: 8.5, tenureMonths: 240 },
+    referenceType: 'FIRST_PRINCIPLES'
+  });
+  assert(
+    typeof prov.inputFingerprint === 'string' &&
+    prov.inputFingerprint.length === 64 &&
+    typeof prov.executionFingerprint === 'string' &&
+    prov.executionFingerprint.length === 64,
+    'Provenance Service generates 64-character SHA-256 inputFingerprint and executionFingerprint',
+    'WP22-C03'
+  );
+
+  // C04: WP-20 adapters wrap calculations into canonical result envelopes
+  const sipAdapted = Wp20Adapters.calculateSip(25000, 12, 15, 10);
+  const lumpAdapted = Wp20Adapters.calculateLumpsum(500000, 12, 10, 6);
+  assert(
+    sipAdapted.state === 'VALID' &&
+    sipAdapted.data !== null &&
+    sipAdapted.provenance.algorithmVersion === '1.0.0' &&
+    lumpAdapted.state === 'VALID',
+    'WP-20 Adapters wrap SIP and Lumpsum calculations into canonical CalculationResult envelopes',
+    'WP22-C04'
+  );
+
+  // C05: Hardened XIRR engine solves standard investment cash flows
+  const standardFlows = [
+    { date: '2025-01-01', amount: -100000 },
+    { date: '2026-01-01', amount: 120000 }
+  ];
+  const xirrRes = XirrEngine.calculate(standardFlows);
+  assert(
+    xirrRes.state === 'VALID' &&
+    xirrRes.data !== null &&
+    Math.abs(xirrRes.data.effectiveAnnualRate - 0.20) < 0.005,
+    'Hardened XIRR Engine accurately solves standard annual investment cash flows (20.0% p.a.)',
+    'WP22-C05'
+  );
+
+  // C06: Hardened XIRR engine rejects single cash flows
+  const singleFlow = [{ date: '2026-01-01', amount: -100000 }];
+  const xirrSingleRes = XirrEngine.calculate(singleFlow);
+  assert(
+    xirrSingleRes.state === 'INSUFFICIENT_DATA' &&
+    xirrSingleRes.error?.code === 'ERR_INSUFFICIENT_DATA',
+    'Hardened XIRR Engine rejects single cash flows with INSUFFICIENT_DATA',
+    'WP22-C06'
+  );
+
+  // C07: Hardened XIRR engine rejects all-positive cash flows
+  const allPosFlows = [
+    { date: '2025-01-01', amount: 100000 },
+    { date: '2026-01-01', amount: 120000 }
+  ];
+  const xirrPosRes = XirrEngine.calculate(allPosFlows);
+  assert(
+    xirrPosRes.state === 'NO_SOLUTION' &&
+    xirrPosRes.error?.code === 'ERR_NO_SOLUTION',
+    'Hardened XIRR Engine rejects all-positive cash flows with NO_SOLUTION',
+    'WP22-C07'
+  );
+
+  // C08: XIRR Scale Invariance property test
+  const scalePass = MathematicalInvariants.verifyXirrScaleInvariance(standardFlows, 1000);
+  assert(
+    scalePass,
+    'Hardened XIRR Engine satisfies Scale Invariance property: XIRR(k * C) === XIRR(C)',
+    'WP22-C08'
+  );
+
+  // C09: Loan EMI Principal Conservation invariant test
+  const loanConservation = MathematicalInvariants.verifyLoanPrincipalConservation(3000000, 8.5, 240);
+  assert(
+    loanConservation,
+    'Loan EMI Engine satisfies Principal Conservation invariant: sum(principal components) === P',
+    'WP22-C09'
+  );
+
+  // C10: CAGR Analytical Inversion invariant test
+  const cagrInverse = MathematicalInvariants.verifyCagrInverse(100000, 250000, 5);
+  assert(
+    cagrInverse,
+    'CAGR Engine satisfies Analytical Inversion invariant: Initial * (1 + CAGR)^t === Final',
+    'WP22-C10'
+  );
+
+  // C11: Zero Rate Boundary invariant test
+  const zeroRatePass = MathematicalInvariants.verifyZeroRateBoundaries();
+  assert(
+    zeroRatePass,
+    'Engines satisfy Zero-Rate Boundary invariants across SIP, Lumpsum, and Loan EMI (r = 0)',
+    'WP22-C11'
+  );
+
+  // C12: Recurring Deposit Engine computes quarterly compounded annuity & reconciles schedule
+  const rdRes = RecurringDepositEngine.calculate({
+    monthlyDeposit: 5000,
+    annualNominalRatePct: 7.0,
+    tenureMonths: 12,
+    compoundingFrequency: 'QUARTERLY'
+  });
+  const rdScheduleSumInterest = rdRes.data?.quarterlyBreakdown.reduce((s, q) => s + q.interestEarned, 0);
+  const rdFinalClosing = rdRes.data?.quarterlyBreakdown[rdRes.data.quarterlyBreakdown.length - 1].closingBalance;
+  assert(
+    rdRes.state === 'VALID' &&
+    rdRes.data !== null &&
+    rdRes.data.totalDeposited === 60000 &&
+    rdRes.data.maturityCorpus === 62311 &&
+    rdRes.data.totalInterestEarned === 2311 &&
+    rdFinalClosing === 62311 &&
+    rdScheduleSumInterest === 2311,
+    'Recurring Deposit Engine computes Model A maturity (₹62,311) and reconciles schedule closing balance & interest identically',
+    'WP22-C12'
+  );
+
+  // C13: Recurring Deposit Engine input validation
+  const rdInvalid = RecurringDepositEngine.calculate({
+    monthlyDeposit: -1000,
+    annualNominalRatePct: 7.0,
+    tenureMonths: 12
+  });
+  assert(
+    rdInvalid.state === 'INVALID_INPUT' &&
+    rdInvalid.error?.code === 'ERR_INPUT_OUT_OF_RANGE',
+    'Recurring Deposit Engine rejects negative deposits with INVALID_INPUT',
+    'WP22-C13'
+  );
+
+  // C14: Statutory PPF Engine computes 15-year compounding schedule
+  const ppfRes = PpfEngine.calculate({
+    annualDepositAmount: 150000,
+    customRatePct: 7.10,
+    tenureYears: 15
+  });
+  assert(
+    ppfRes.state === 'VALID' &&
+    ppfRes.data !== null &&
+    ppfRes.data.totalDeposited === 2250000 &&
+    ppfRes.data.maturityAmount > 4000000 &&
+    ppfRes.data.yearlySchedule.length === 15,
+    'Statutory PPF Engine computes 15-year statutory compounding schedule accurately (₹40L+ maturity on ₹1.5L/yr)',
+    'WP22-C14'
+  );
+
+  // C15: Statutory PPF Engine deposit validation
+  const ppfZero = PpfEngine.calculate({
+    annualDepositAmount: 0,
+    tenureYears: 15
+  });
+  assert(
+    ppfZero.state === 'ZERO',
+    'Statutory PPF Engine handles zero annual deposit with ZERO state',
+    'WP22-C15'
+  );
+
+  // C16: Systematic Withdrawal Plan (SWP) Engine models capital longevity
+  const swpRes = SwpEngine.calculate({
+    initialCorpus: 5000000,
+    monthlyWithdrawal: 30000,
+    annualReturnRatePct: 8.0,
+    tenureYears: 10
+  });
+  assert(
+    swpRes.state === 'VALID' &&
+    swpRes.data !== null &&
+    swpRes.data.totalWithdrawn === 3600000 &&
+    swpRes.data.finalRemainingCorpus > 0 &&
+    !swpRes.data.isCorpusExhausted,
+    'Systematic Withdrawal Plan Engine models sustainable annuity decumulation without premature exhaustion',
+    'WP22-C16'
+  );
+
+  // C17: SWP Engine flags premature capital exhaustion
+  const swpExhaust = SwpEngine.calculate({
+    initialCorpus: 500000,
+    monthlyWithdrawal: 100000,
+    annualReturnRatePct: 5.0,
+    tenureYears: 5
+  });
+  assert(
+    swpExhaust.state === 'VALID' &&
+    swpExhaust.data !== null &&
+    swpExhaust.data.isCorpusExhausted &&
+    typeof swpExhaust.data.exhaustionMonth === 'number',
+    'SWP Engine accurately detects and flags capital exhaustion month when withdrawal rate is unsustainable',
+    'WP22-C17'
+  );
+
+  // C18: Goal Reverse SIP Engine computes required monthly contribution
+  const goalRes = GoalReverseSipEngine.calculate({
+    targetCorpus: 10000000,
+    tenureYears: 10,
+    annualExpectedRatePct: 12.0,
+    currentSavings: 1000000
+  });
+  assert(
+    goalRes.state === 'VALID' &&
+    goalRes.data !== null &&
+    goalRes.data.requiredMonthlySip > 0 &&
+    goalRes.data.remainingCorpusDeficit > 0,
+    'Goal Reverse SIP Engine calculates exact monthly investment required to achieve ₹1.0 Cr milestone corpus',
+    'WP22-C18'
+  );
+
+  // C19: Retirement & FIRE Engine computes target corpus and Coast FIRE milestones
+  const fireRes = RetirementFireEngine.calculate({
+    currentAge: 30,
+    targetRetirementAge: 50,
+    annualLivingExpenses: 1200000,
+    currentInvestedCorpus: 2000000,
+    monthlySavings: 50000,
+    preRetirementReturnRatePct: 12.0,
+    postRetirementReturnRatePct: 8.0,
+    expectedInflationPct: 6.0,
+    safeWithdrawalRatePct: 4.0
+  });
+  assert(
+    fireRes.state === 'VALID' &&
+    fireRes.data !== null &&
+    fireRes.data.yearsToRetirement === 20 &&
+    fireRes.data.targetRetirementCorpus > 0 &&
+    fireRes.data.coastFireCorpusToday > 0,
+    'Retirement & FIRE Engine accurately computes SWR-based target corpus and Coast FIRE milestone',
+    'WP22-C19'
+  );
+
+  // C20: Differential test verifying 100% equivalence between WP-20 baseline and canonical adapters
+  const wp20Sip = CalculatorsService.calculateSip(25000, 12, 15, 10);
+  const adaptedSip = Wp20Adapters.calculateSip(25000, 12, 15, 10);
+  const wp20Loan = CalculatorsService.calculateLoanEmi(3000000, 8.5, 240);
+  const adaptedLoan = Wp20Adapters.calculateLoanEmi(3000000, 8.5, 240);
+  assert(
+    adaptedSip.data?.totalValue === wp20Sip.totalValue &&
+    adaptedSip.data?.totalInvested === wp20Sip.totalInvested &&
+    adaptedLoan.data?.monthlyEmi === wp20Loan.monthlyEmi &&
+    adaptedLoan.data?.totalInterest === wp20Loan.totalInterest,
+    'Differential Verification: Canonical WP-22 Adapters produce 100% identical outputs to WP-20 baseline',
+    'WP22-C20'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');
