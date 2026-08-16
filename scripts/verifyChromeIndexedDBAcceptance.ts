@@ -2485,8 +2485,8 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     );
 
     // WP20-C03: Lumpsum Calculator tab renders inputs and computes nominal vs real purchasing power
-    await page.click('#calc-tab-lumpsum');
-    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => document.getElementById('calc-tab-lumpsum')?.click());
+    await new Promise(r => setTimeout(r, 400));
     let lumpAmountExists = await page.evaluate(() => !!document.getElementById('input-lump-amount'));
     let lumpInflationExists = await page.evaluate(() => !!document.getElementById('input-lump-inflation'));
     let lumpBodyText = await page.evaluate(() => document.body.innerText);
@@ -2497,8 +2497,8 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     );
 
     // WP20-C04: XIRR Solver tab renders cash flows table and computes converged XIRR percentage
-    await page.click('#calc-tab-xirr');
-    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => document.getElementById('calc-tab-xirr')?.click());
+    await new Promise(r => setTimeout(r, 400));
     let xirrTableRows = await page.evaluate(() => document.querySelectorAll('tbody tr').length);
     let xirrText = await page.evaluate(() => document.body.innerText);
     check(
@@ -2533,8 +2533,17 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     );
 
     // WP20-C07: CAGR Engine tab renders inputs and computes geometric compounding rate
-    await page.click('#calc-tab-cagr');
-    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => document.getElementById('calc-tab-cagr')?.click());
+    // Deterministic readiness wait: poll until CAGR calculator inputs AND computed output are present
+    // in the real Chrome DOM. Replaces the fixed 300ms sleep that became insufficient after WP-22B
+    // added ProvenanceBadge rendering overhead to CagrCalculator (forensic diagnosis 2026-08-16).
+    await page.waitForFunction(
+      () => !!document.getElementById('input-cagr-initial') &&
+            !!document.getElementById('input-cagr-final') &&
+            document.body.innerText.includes('+20.11%') &&
+            document.body.innerText.includes('2.5x'),
+      { timeout: 15000 }
+    );
     let cagrInitialExists = await page.evaluate(() => !!document.getElementById('input-cagr-initial'));
     let cagrFinalExists = await page.evaluate(() => !!document.getElementById('input-cagr-final'));
     let cagrText = await page.evaluate(() => document.body.innerText);
@@ -2545,8 +2554,17 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     );
 
     // WP20-C08: Loan / EMI Calculator tab renders inputs and computes monthly EMI
-    await page.click('#calc-tab-loan');
-    await new Promise(r => setTimeout(r, 300));
+    await page.evaluate(() => document.getElementById('calc-tab-loan')?.click());
+    // Deterministic readiness wait: poll until Loan EMI calculator inputs AND computed EMI value are
+    // present in the real Chrome DOM. Replaces the fixed 300ms sleep that became insufficient after
+    // WP-22B added ProvenanceBadge rendering overhead to LoanEmiCalculator (forensic diagnosis 2026-08-16).
+    await page.waitForFunction(
+      () => !!document.getElementById('input-loan-principal') &&
+            !!document.getElementById('input-loan-rate') &&
+            document.body.innerText.includes('26,035') &&
+            document.body.innerText.toUpperCase().includes('TOTAL INTEREST PAYABLE'),
+      { timeout: 15000 }
+    );
     let loanPrincipalExists = await page.evaluate(() => !!document.getElementById('input-loan-principal'));
     let loanRateExists = await page.evaluate(() => !!document.getElementById('input-loan-rate'));
     let loanText = await page.evaluate(() => document.body.innerText);
