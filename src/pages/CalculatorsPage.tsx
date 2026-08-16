@@ -6,6 +6,11 @@ import { LumpsumCalculator } from '../components/calculators/LumpsumCalculator';
 import { XirrCalculator } from '../components/calculators/XirrCalculator';
 import { CagrCalculator } from '../components/calculators/CagrCalculator';
 import { LoanEmiCalculator } from '../components/calculators/LoanEmiCalculator';
+import { RecurringDepositModal } from '../components/calculators/RecurringDepositModal';
+import { PpfCalculatorModal } from '../components/calculators/PpfCalculatorModal';
+import { SwpCalculatorModal } from '../components/calculators/SwpCalculatorModal';
+import { GoalReverseSipModal } from '../components/calculators/GoalReverseSipModal';
+import { RetirementFireModal } from '../components/calculators/RetirementFireModal';
 import { InflationCalculatorModal } from '../components/essentials/InflationCalculatorModal';
 import {
   TrendingUp,
@@ -21,12 +26,18 @@ import {
   Flame,
   Target,
   Coins,
-  ArrowUpRight
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 export const CalculatorsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'sip' | 'lumpsum' | 'xirr' | 'cagr' | 'loan'>('sip');
   const [isInflationOpen, setIsInflationOpen] = useState(false);
+  const [isRdOpen, setIsRdOpen] = useState(false);
+  const [isPpfOpen, setIsPpfOpen] = useState(false);
+  const [isSwpOpen, setIsSwpOpen] = useState(false);
+  const [isGoalOpen, setIsGoalOpen] = useState(false);
+  const [isRetirementOpen, setIsRetirementOpen] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const roadmapRef = useRef<HTMLDivElement>(null);
 
@@ -38,12 +49,6 @@ export const CalculatorsPage: React.FC = () => {
     setActiveTab(tab);
     if (workspaceRef.current) {
       workspaceRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const scrollToRoadmap = () => {
-    if (roadmapRef.current) {
-      roadmapRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -78,8 +83,8 @@ export const CalculatorsPage: React.FC = () => {
       color: '#F59E0B',
       bgColor: 'bg-amber-950/40',
       borderColor: 'border-amber-800/30',
-      action: scrollToRoadmap,
-      badge: 'Roadmap'
+      action: () => setIsRdOpen(true),
+      badge: 'Live'
     },
     {
       id: 'pop-ppf',
@@ -89,8 +94,8 @@ export const CalculatorsPage: React.FC = () => {
       color: '#23C55E',
       bgColor: 'bg-green-950/40',
       borderColor: 'border-green-800/30',
-      action: scrollToRoadmap,
-      badge: 'Roadmap'
+      action: () => setIsPpfOpen(true),
+      badge: 'Live'
     },
     {
       id: 'pop-retire',
@@ -100,8 +105,8 @@ export const CalculatorsPage: React.FC = () => {
       color: '#EF4444',
       bgColor: 'bg-rose-950/40',
       borderColor: 'border-rose-800/30',
-      action: scrollToRoadmap,
-      badge: 'Roadmap'
+      action: () => setIsRetirementOpen(true),
+      badge: 'Live'
     },
     {
       id: 'pop-goal',
@@ -111,8 +116,8 @@ export const CalculatorsPage: React.FC = () => {
       color: '#06B6D4',
       bgColor: 'bg-cyan-950/40',
       borderColor: 'border-cyan-800/30',
-      action: scrollToRoadmap,
-      badge: 'Roadmap'
+      action: () => setIsGoalOpen(true),
+      badge: 'Live'
     }
   ];
 
@@ -135,8 +140,8 @@ export const CalculatorsPage: React.FC = () => {
       id: 'all-swp',
       name: 'SWP Calculator',
       desc: 'Systematic Withdrawal Plan for passive annuity cash flows',
-      action: scrollToRoadmap,
-      type: 'Roadmap'
+      action: () => setIsSwpOpen(true),
+      type: 'Live Engine'
     },
     {
       id: 'all-emi',
@@ -149,15 +154,15 @@ export const CalculatorsPage: React.FC = () => {
       id: 'all-rd',
       name: 'RD Calculator',
       desc: 'Recurring Deposit quarterly compounding calculator',
-      action: scrollToRoadmap,
-      type: 'Roadmap'
+      action: () => setIsRdOpen(true),
+      type: 'Live Engine'
     },
     {
       id: 'all-ppf',
       name: 'PPF Calculator',
       desc: 'Public Provident Fund 15-year statutory interest & tax exemption',
-      action: scrollToRoadmap,
-      type: 'Roadmap'
+      action: () => setIsPpfOpen(true),
+      type: 'Live Engine'
     },
     {
       id: 'all-inflation',
@@ -170,8 +175,15 @@ export const CalculatorsPage: React.FC = () => {
       id: 'all-retirement',
       name: 'Retirement Calculator',
       desc: 'Corpus requirement and FIRE target runway estimator',
-      action: scrollToRoadmap,
-      type: 'Roadmap'
+      action: () => setIsRetirementOpen(true),
+      type: 'Live Engine'
+    },
+    {
+      id: 'all-goal',
+      name: 'Goal & Reverse SIP Calculator',
+      desc: 'Exact target milestone solver with step-up and existing portfolio growth',
+      action: () => setIsGoalOpen(true),
+      type: 'Live Engine'
     }
   ];
 
@@ -373,7 +385,7 @@ export const CalculatorsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Expanded Mathematical Engine Roadmap Container */}
+      {/* Certified Mathematical Intelligence Engines Grid (Live Interactive) */}
       <div
         ref={roadmapRef}
         className="bg-[#161B22] border border-[#21262D] rounded-2xl p-5 space-y-3 shadow-sm"
@@ -382,34 +394,39 @@ export const CalculatorsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Layers size={16} className="text-emerald-500" />
             <h3 className="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider">
-              Expanded Mathematical Engine Roadmap
+              Certified Mathematical Intelligence Engines
             </h3>
           </div>
           <span className="text-[11px] text-[#8B949E] font-semibold flex items-center gap-1">
-            <Clock size={12} /> Institutional Roadmap Modules
+            <ShieldCheck size={12} className="text-[#23C55E]" /> RFC 8785 Canonical Engines
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { name: 'Recurring Deposit (RD)', tag: 'Coming Soon', desc: 'Quarterly compounding' },
-            { name: 'Public Provident Fund', tag: 'Coming Soon', desc: 'Section 80C & EEE tax exemption' },
-            { name: 'Systematic Withdrawal (SWP)', tag: 'Coming Soon', desc: 'Annuity retirement cash flows' },
-            { name: 'Retirement Corpus & FIRE', tag: 'Coming Soon', desc: 'Monte Carlo simulation' },
-            { name: 'Target Goal Planner', tag: 'Coming Soon', desc: 'Reverse SIP milestone solver' }
-          ].map((calc, idx) => (
-            <div
-              key={idx}
-              className="p-3 bg-[#0D1117] border border-[#21262D]/60 rounded-xl space-y-1.5"
+            { id: 'btn-open-rd-engine', name: 'Recurring Deposit (RD)', tag: 'Live Engine', desc: 'Quarterly compounding annuity', action: () => setIsRdOpen(true), color: '#F59E0B' },
+            { id: 'btn-open-ppf-engine', name: 'Public Provident Fund', tag: 'Live Engine', desc: 'PPF Scheme 2019 statutory model', action: () => setIsPpfOpen(true), color: '#A855F7' },
+            { id: 'btn-open-swp-engine', name: 'Systematic Withdrawal', tag: 'Live Engine', desc: 'Cash flow depletion solver', action: () => setIsSwpOpen(true), color: '#06B6D4' },
+            { id: 'btn-open-fire-engine', name: 'Retirement & FIRE', tag: 'Live Engine', desc: 'Corpus & annuity-due solver', action: () => setIsRetirementOpen(true), color: '#F97316' },
+            { id: 'btn-open-goal-engine', name: 'Goal Planner / Reverse SIP', tag: 'Live Engine', desc: 'Target corpus root-finder', action: () => setIsGoalOpen(true), color: '#EC4899' }
+          ].map((calc) => (
+            <button
+              key={calc.id}
+              id={calc.id}
+              onClick={calc.action}
+              className="p-3 bg-[#0D1117] hover:bg-[#161B22] border border-[#21262D]/60 hover:border-[#30363D] rounded-xl space-y-1.5 text-left transition group cursor-pointer"
             >
               <div className="flex justify-between items-start gap-1">
-                <span className="text-xs font-bold text-[#F0F6FC] line-clamp-1">{calc.name}</span>
+                <span className="text-xs font-bold text-[#F0F6FC] group-hover:text-[#4F8CFF] transition line-clamp-1">
+                  {calc.name}
+                </span>
+                <ArrowUpRight size={12} className="text-[#8B949E] group-hover:text-[#F0F6FC] transition shrink-0" />
               </div>
               <p className="text-[10px] text-[#8B949E] leading-tight">{calc.desc}</p>
-              <span className="inline-block px-2 py-0.5 rounded bg-[#21262D] text-[#8B949E] text-[9px] font-bold">
+              <span className="inline-block px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/30 text-[#23C55E] text-[9px] font-bold">
                 {calc.tag}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -458,7 +475,27 @@ export const CalculatorsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Interactive Inflation Modal */}
+      {/* Interactive Modals */}
+      <RecurringDepositModal
+        isOpen={isRdOpen}
+        onClose={() => setIsRdOpen(false)}
+      />
+      <PpfCalculatorModal
+        isOpen={isPpfOpen}
+        onClose={() => setIsPpfOpen(false)}
+      />
+      <SwpCalculatorModal
+        isOpen={isSwpOpen}
+        onClose={() => setIsSwpOpen(false)}
+      />
+      <GoalReverseSipModal
+        isOpen={isGoalOpen}
+        onClose={() => setIsGoalOpen(false)}
+      />
+      <RetirementFireModal
+        isOpen={isRetirementOpen}
+        onClose={() => setIsRetirementOpen(false)}
+      />
       <InflationCalculatorModal
         isOpen={isInflationOpen}
         onClose={() => setIsInflationOpen(false)}

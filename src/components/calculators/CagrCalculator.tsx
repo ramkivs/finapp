@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CalculatorsService } from '../../services/CalculatorsService';
+import { FinancialQueries } from '../../application/queries';
 import { CurrencyValue } from '../CurrencyValue';
+import { ProvenanceBadge } from '../ui/ProvenanceBadge';
 import { Percent, TrendingUp, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 
 export const CagrCalculator: React.FC = () => {
@@ -8,7 +9,14 @@ export const CagrCalculator: React.FC = () => {
   const [finalValue, setFinalValue] = useState<number>(250000);
   const [years, setYears] = useState<number>(5);
 
-  const result = CalculatorsService.calculateCagr(initialValue, finalValue, years);
+  const calcResult = FinancialQueries.calculateCagr(initialValue, finalValue, years);
+  const result = calcResult.data || {
+    cagr: 0,
+    absoluteGrowthPct: 0,
+    multiplier: 0,
+    isValid: false,
+    error: calcResult.error?.message || 'Invalid calculation'
+  };
 
   return (
     <div className="space-y-6">
@@ -167,6 +175,11 @@ export const CagrCalculator: React.FC = () => {
           CAGR smoothes out year-to-year volatility to depict what an investment would have yielded on an annually compounded basis.
         </p>
       </div>
+
+      {/* Institutional Provenance Badge */}
+      {calcResult.provenance && (
+        <ProvenanceBadge provenance={calcResult.provenance} />
+      )}
     </div>
   );
 };

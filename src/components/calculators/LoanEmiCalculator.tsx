@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CalculatorsService } from '../../services/CalculatorsService';
+import { FinancialQueries } from '../../application/queries';
 import { CurrencyValue } from '../CurrencyValue';
+import { ProvenanceBadge } from '../ui/ProvenanceBadge';
 import { CreditCard, Calendar, PieChart, TrendingDown } from 'lucide-react';
 
 export const LoanEmiCalculator: React.FC = () => {
@@ -11,7 +12,13 @@ export const LoanEmiCalculator: React.FC = () => {
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
 
   const tenureMonths = tenureYears * 12;
-  const result = CalculatorsService.calculateLoanEmi(principal, annualRate, tenureMonths);
+  const calcResult = FinancialQueries.calculateLoanEmi(principal, annualRate, tenureMonths);
+  const result = calcResult.data || {
+    monthlyEmi: 0,
+    totalInterest: 0,
+    totalAmount: 0,
+    schedule: []
+  };
 
   const principalPct = result.totalAmount > 0
     ? Math.round((principal / result.totalAmount) * 100)
@@ -274,6 +281,11 @@ export const LoanEmiCalculator: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Institutional Provenance Badge */}
+      {calcResult.provenance && (
+        <ProvenanceBadge provenance={calcResult.provenance} />
+      )}
     </div>
   );
 };

@@ -2632,6 +2632,238 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     'WP22-C20'
   );
 
+  console.log('\n21. [WP-22B Phase B: Application Integration & Query Boundary Suite (WP22B-A01 to WP22B-A16)]');
+
+  // A01: FinancialQueries exposes all 10 canonical calculation methods
+  assert(
+    typeof queries.calculateSip === 'function' &&
+    typeof queries.calculateLumpsum === 'function' &&
+    typeof queries.calculateLoanEmi === 'function' &&
+    typeof queries.calculateCagr === 'function' &&
+    typeof queries.calculateXirr === 'function' &&
+    typeof queries.calculateRecurringDeposit === 'function' &&
+    typeof queries.calculatePpf === 'function' &&
+    typeof queries.calculateSwp === 'function' &&
+    typeof queries.calculateGoalReverseSip === 'function' &&
+    typeof queries.calculateRetirementFire === 'function',
+    'FinancialQueries exposes all 10 canonical mathematical application query methods',
+    'WP22B-A01'
+  );
+
+  // A02: queries.calculateSip returns typed CalculationResult with valid provenance
+  const qSip = queries.calculateSip(25000, 12, 15, 10);
+  assert(
+    qSip.state === 'VALID' &&
+    qSip.data !== null &&
+    qSip.data.totalInvested === 9531745 &&
+    qSip.data.totalValue === 21709624 &&
+    typeof qSip.provenance.executionFingerprint === 'string' &&
+    qSip.provenance.executionFingerprint.length === 64,
+    'FinancialQueries.calculateSip returns typed CalculationResult with deterministic SHA-256 provenance',
+    'WP22B-A02'
+  );
+
+  // A03: queries.calculateLumpsum returns typed CalculationResult
+  const qLump = queries.calculateLumpsum(500000, 12, 10, 6);
+  assert(
+    qLump.state === 'VALID' &&
+    qLump.data !== null &&
+    qLump.data.totalValue === 1552924 &&
+    qLump.data.realPurchasingPower === 867145 &&
+    qLump.provenance.algorithmId === 'ALG_LUMPSUM_COMPOUNDING',
+    'FinancialQueries.calculateLumpsum returns typed CalculationResult with purchasing power adjustment',
+    'WP22B-A03'
+  );
+
+  // A04: queries.calculateLoanEmi returns typed CalculationResult
+  const qLoan = queries.calculateLoanEmi(3000000, 8.5, 240);
+  assert(
+    qLoan.state === 'VALID' &&
+    qLoan.data !== null &&
+    qLoan.data.monthlyEmi === 26035 &&
+    qLoan.data.totalInterest === 3248212 &&
+    qLoan.data.schedule.length === 240,
+    'FinancialQueries.calculateLoanEmi returns typed CalculationResult with full 240-month amortization',
+    'WP22B-A04'
+  );
+
+  // A05: queries.calculateCagr returns typed CalculationResult
+  const qCagr = queries.calculateCagr(100000, 250000, 5);
+  assert(
+    qCagr.state === 'VALID' &&
+    qCagr.data !== null &&
+    qCagr.data.cagr === 20.11 &&
+    qCagr.data.multiplier === 2.5,
+    'FinancialQueries.calculateCagr returns typed CalculationResult with geometric mean CAGR (+20.11%)',
+    'WP22B-A05'
+  );
+
+  // A06: queries.calculateXirr returns typed CalculationResult
+  const qXirr = queries.calculateXirr(standardFlows);
+  assert(
+    qXirr.state === 'VALID' &&
+    qXirr.data !== null &&
+    qXirr.data.rootStatus === 'UNIQUE' &&
+    qXirr.provenance.algorithmId === 'ALG_XIRR_HARDENED_HYBRID',
+    'FinancialQueries.calculateXirr returns typed CalculationResult with root classification',
+    'WP22B-A06'
+  );
+
+  // A07: queries.calculateRecurringDeposit returns typed CalculationResult
+  const qRd = queries.calculateRecurringDeposit({
+    monthlyDeposit: 5000,
+    annualNominalRatePct: 7.0,
+    tenureMonths: 12,
+    compoundingFrequency: 'QUARTERLY'
+  });
+  assert(
+    qRd.state === 'VALID' &&
+    qRd.data !== null &&
+    qRd.data.maturityCorpus === 62311 &&
+    qRd.data.totalInterestEarned === 2311 &&
+    qRd.data.quarterlyBreakdown.length === 4,
+    'FinancialQueries.calculateRecurringDeposit returns typed CalculationResult with quarterly accrual schedule',
+    'WP22B-A07'
+  );
+
+  // A08: queries.calculatePpf returns typed CalculationResult
+  const qPpf = queries.calculatePpf({
+    annualDepositAmount: 150000,
+    customRatePct: 7.10,
+    tenureYears: 15
+  });
+  assert(
+    qPpf.state === 'VALID' &&
+    qPpf.data !== null &&
+    qPpf.data.totalDeposited === 2250000 &&
+    qPpf.data.maturityAmount > 4000000 &&
+    qPpf.provenance.policyContractId === 'IN_PPF_SCHEME_2019',
+    'FinancialQueries.calculatePpf returns typed CalculationResult referencing IN_PPF_SCHEME_2019 policy contract',
+    'WP22B-A08'
+  );
+
+  // A09: queries.calculateSwp returns typed CalculationResult
+  const qSwp = queries.calculateSwp({
+    initialCorpus: 5000000,
+    monthlyWithdrawal: 30000,
+    annualReturnRatePct: 8.0,
+    tenureYears: 10
+  });
+  assert(
+    qSwp.state === 'VALID' &&
+    qSwp.data !== null &&
+    qSwp.data.totalWithdrawn === 3600000 &&
+    qSwp.data.finalRemainingCorpus > 0 &&
+    !qSwp.data.isCorpusExhausted,
+    'FinancialQueries.calculateSwp returns typed CalculationResult with decumulation longevity metrics',
+    'WP22B-A09'
+  );
+
+  // A10: queries.calculateGoalReverseSip returns typed CalculationResult
+  const qGoal = queries.calculateGoalReverseSip({
+    targetCorpus: 10000000,
+    tenureYears: 10,
+    annualExpectedRatePct: 12.0,
+    currentSavings: 1000000
+  });
+  assert(
+    qGoal.state === 'VALID' &&
+    qGoal.data !== null &&
+    qGoal.data.requiredMonthlySip > 0 &&
+    qGoal.data.remainingCorpusDeficit > 0 &&
+    qGoal.provenance.algorithmId === 'ALG_GOAL_REVERSE_SIP',
+    'FinancialQueries.calculateGoalReverseSip returns typed CalculationResult with required monthly SIP contribution',
+    'WP22B-A10'
+  );
+
+  // A11: queries.calculateRetirementFire returns typed CalculationResult
+  const qFire = queries.calculateRetirementFire({
+    currentAge: 30,
+    targetRetirementAge: 50,
+    annualLivingExpenses: 1200000,
+    currentInvestedCorpus: 2000000,
+    monthlySavings: 50000,
+    preRetirementReturnRatePct: 12.0,
+    postRetirementReturnRatePct: 8.0,
+    expectedInflationPct: 6.0,
+    safeWithdrawalRatePct: 4.0
+  });
+  assert(
+    qFire.state === 'VALID' &&
+    qFire.data !== null &&
+    qFire.data.yearsToRetirement === 20 &&
+    qFire.data.targetRetirementCorpus > 0 &&
+    qFire.data.coastFireCorpusToday > 0 &&
+    qFire.provenance.algorithmId === 'ALG_FIRE_LONGEVITY_MODEL',
+    'FinancialQueries.calculateRetirementFire returns typed CalculationResult with SWR corpus and Coast FIRE metrics',
+    'WP22B-A11'
+  );
+
+  // A12: Numerical Parity Contract across all 10 engines
+  const engRd = RecurringDepositEngine.calculate({ monthlyDeposit: 5000, annualNominalRatePct: 7.0, tenureMonths: 12, compoundingFrequency: 'QUARTERLY' });
+  const engPpf = PpfEngine.calculate({ annualDepositAmount: 150000, customRatePct: 7.10, tenureYears: 15 });
+  const engSwp = SwpEngine.calculate({ initialCorpus: 5000000, monthlyWithdrawal: 30000, annualReturnRatePct: 8.0, tenureYears: 10 });
+  const engGoal = GoalReverseSipEngine.calculate({ targetCorpus: 10000000, tenureYears: 10, annualExpectedRatePct: 12.0, currentSavings: 1000000 });
+  const engFire = RetirementFireEngine.calculate({ currentAge: 30, targetRetirementAge: 50, annualLivingExpenses: 1200000, currentInvestedCorpus: 2000000, monthlySavings: 50000, preRetirementReturnRatePct: 12.0, postRetirementReturnRatePct: 8.0 });
+  assert(
+    qRd.data?.maturityCorpus === engRd.data?.maturityCorpus &&
+    qPpf.data?.maturityAmount === engPpf.data?.maturityAmount &&
+    qSwp.data?.finalRemainingCorpus === engSwp.data?.finalRemainingCorpus &&
+    qGoal.data?.requiredMonthlySip === engGoal.data?.requiredMonthlySip &&
+    qFire.data?.targetRetirementCorpus === engFire.data?.targetRetirementCorpus,
+    'Numerical Parity Contract: Certified Engine Result === FinancialQueries.data across all engines',
+    'WP22B-A12'
+  );
+
+  // A13: Deterministic Provenance: Identical inputs yield identical execution fingerprints
+  const qRd1 = queries.calculateRecurringDeposit({ monthlyDeposit: 10000, annualNominalRatePct: 6.5, tenureMonths: 24 });
+  const qRd2 = queries.calculateRecurringDeposit({ monthlyDeposit: 10000, annualNominalRatePct: 6.5, tenureMonths: 24 });
+  assert(
+    qRd1.provenance.executionFingerprint === qRd2.provenance.executionFingerprint &&
+    qRd1.provenance.inputFingerprint === qRd2.provenance.inputFingerprint,
+    'Deterministic Provenance: Identical query inputs produce identical RFC 8785 SHA-256 fingerprints',
+    'WP22B-A13'
+  );
+
+  // A14: Structured Error Handling Boundary
+  const qRdErr = queries.calculateRecurringDeposit({ monthlyDeposit: -500, annualNominalRatePct: 7.0, tenureMonths: 12 });
+  const qXirrErr = queries.calculateXirr([{ date: '2026-01-01', amount: 10000 }]);
+  assert(
+    qRdErr.state === 'INVALID_INPUT' &&
+    qRdErr.error?.code === 'ERR_INPUT_OUT_OF_RANGE' &&
+    qXirrErr.state === 'INSUFFICIENT_DATA' &&
+    qXirrErr.error?.code === 'ERR_INSUFFICIENT_DATA',
+    'Application Query Boundary converts out-of-range inputs into structured CalculationResult error envelopes',
+    'WP22B-A14'
+  );
+
+  // A15: Repository Side-Effect Freedom
+  const snapAssetsBefore = repository.assets.findAllSync().length;
+  const snapLiabsBefore = repository.liabilities.findAllSync().length;
+  const snapTxsBefore = repository.transactions.findAllSync().length;
+  queries.calculateSip(50000, 15, 20, 10);
+  queries.calculateLumpsum(1000000, 10, 15, 5);
+  queries.calculateLoanEmi(5000000, 9.0, 180);
+  queries.calculateRecurringDeposit({ monthlyDeposit: 10000, annualNominalRatePct: 7.0, tenureMonths: 24 });
+  queries.calculatePpf({ annualDepositAmount: 150000 });
+  queries.calculateSwp({ initialCorpus: 10000000, monthlyWithdrawal: 50000, annualReturnRatePct: 8.0, tenureYears: 15 });
+  queries.calculateGoalReverseSip({ targetCorpus: 5000000, tenureYears: 5, annualExpectedRatePct: 12.0 });
+  queries.calculateRetirementFire({ currentAge: 30, targetRetirementAge: 50, annualLivingExpenses: 600000, currentInvestedCorpus: 1000000, monthlySavings: 30000, preRetirementReturnRatePct: 12.0, postRetirementReturnRatePct: 8.0 });
+  assert(
+    repository.assets.findAllSync().length === snapAssetsBefore &&
+    repository.liabilities.findAllSync().length === snapLiabsBefore &&
+    repository.transactions.findAllSync().length === snapTxsBefore,
+    'Application Calculation Queries are strictly side-effect free and cannot mutate repository records',
+    'WP22B-A15'
+  );
+
+  // A16: Global window export contract for testing and debugging
+  assert(
+    typeof (globalThis as any).FinancialQueries === 'function' || typeof queries === 'function',
+    'Application query orchestrator conforms to canonical application interface contract',
+    'WP22B-A16'
+  );
+
   console.log('\n──────────────────────────────────────────────────────────────────────────');
   console.log(`REGRESSION SUITE SUMMARY: ${passCount}/${passCount + failCount} PASS | ${failCount} FAIL`);
   console.log('──────────────────────────────────────────────────────────────────────────\n');

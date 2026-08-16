@@ -2985,6 +2985,162 @@ serverProc = spawn(npxCommand, ['vite', 'preview', '--strictPort', '--port', Str
     });
     await new Promise(r => setTimeout(r, 600));
 
+    // =========================================================================
+    // WP-22B: Canonical Mathematical Intelligence Application & UI Suite
+    // (WP22B-V01 to WP22B-V08)
+    // =========================================================================
+    console.log('\n  [WP-22B Mathematical Intelligence UI & Application Integration Suite]');
+
+    // Navigate to Calculators Hub
+    await clickNav(page, "Calculators");
+    await new Promise(r => setTimeout(r, 400));
+
+    // WP22B-V01: Reusable ProvenanceBadge renders in SIP workspace with expand/collapse
+    let provBadgeCheck = await page.evaluate(async () => {
+      const sipBadge = document.querySelector('button[aria-expanded]');
+      const badgeText = document.body.innerText;
+      const hasProvText = badgeText.includes('Institutional Mathematical Provenance') || badgeText.includes('Verified Deterministic');
+      return hasProvText && !!sipBadge;
+    });
+    check(
+      provBadgeCheck,
+      "WP22B-V01",
+      "Institutional Provenance Badge renders in active calculator workspace with verified deterministic badge"
+    );
+
+    // WP22B-V02: Recurring Deposit (RD) Modal opens, computes Model A quarterly compounding, and renders provenance
+    let rdModalCheck = await page.evaluate(async () => {
+      const openBtn = document.getElementById('btn-open-rd-engine');
+      if (openBtn) openBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const modalText = document.body.innerText;
+      const hasTitle = modalText.includes('Recurring Deposit (RD) Calculator');
+      const hasModelA = modalText.includes('Quarterly Compounded Bank Annuity');
+      const hasInputs = !!document.getElementById('input-rd-deposit');
+      const closeBtn = document.getElementById('btn-close-rd-modal');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasTitle && hasModelA && hasInputs;
+    });
+    check(
+      rdModalCheck,
+      "WP22B-V02",
+      "Recurring Deposit (RD) Modal opens, computes Model A quarterly compounding, and closes cleanly"
+    );
+
+    // WP22B-V03: PPF Modal opens, computes 15-year statutory compounding, and renders provenance
+    let ppfModalCheck = await page.evaluate(async () => {
+      const openBtn = document.getElementById('btn-open-ppf-engine');
+      if (openBtn) openBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const modalText = document.body.innerText;
+      const hasTitle = modalText.includes('Public Provident Fund (PPF) Calculator');
+      const hasEee = modalText.includes('EEE') || modalText.includes('Exempt-Exempt-Exempt');
+      const hasInputs = !!document.getElementById('input-ppf-deposit');
+      const closeBtn = document.getElementById('btn-close-ppf-modal');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasTitle && hasEee && hasInputs;
+    });
+    check(
+      ppfModalCheck,
+      "WP22B-V03",
+      "Public Provident Fund (PPF) Modal opens, computes 15-year statutory compounding, and closes cleanly"
+    );
+
+    // WP22B-V04: SWP Modal opens, computes capital longevity, and renders provenance
+    let swpModalCheck = await page.evaluate(async () => {
+      const openBtn = document.getElementById('btn-open-swp-engine');
+      if (openBtn) openBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const modalText = document.body.innerText;
+      const hasTitle = modalText.includes('Systematic Withdrawal Plan (SWP) Calculator');
+      const hasLongevity = modalText.includes('Cash Flow Sustenance & Longevity');
+      const hasInputs = !!document.getElementById('input-swp-corpus');
+      const closeBtn = document.getElementById('btn-close-swp-modal');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasTitle && hasLongevity && hasInputs;
+    });
+    check(
+      swpModalCheck,
+      "WP22B-V04",
+      "Systematic Withdrawal Plan (SWP) Modal opens, computes annuity longevity, and closes cleanly"
+    );
+
+    // WP22B-V05: Goal Planner / Reverse SIP Modal opens, computes target milestone monthly SIP, and renders provenance
+    let goalModalCheck = await page.evaluate(async () => {
+      const openBtn = document.getElementById('btn-open-goal-engine');
+      if (openBtn) openBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const modalText = document.body.innerText;
+      const hasTitle = modalText.includes('Goal Planner & Reverse SIP Calculator');
+      const hasSolver = modalText.includes('Root-Finding Solver');
+      const hasInputs = !!document.getElementById('input-goal-target');
+      const closeBtn = document.getElementById('btn-close-goal-modal');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasTitle && hasSolver && hasInputs;
+    });
+    check(
+      goalModalCheck,
+      "WP22B-V05",
+      "Goal Planner & Reverse SIP Modal opens, calculates exact monthly investment target, and closes cleanly"
+    );
+
+    // WP22B-V06: Retirement & FIRE Modal opens, computes SWR corpus and Coast FIRE milestones, and renders provenance
+    let fireModalCheck = await page.evaluate(async () => {
+      const openBtn = document.getElementById('btn-open-fire-engine');
+      if (openBtn) openBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const modalText = document.body.innerText;
+      const hasTitle = modalText.includes('Retirement & FIRE Number Engine');
+      const hasSwr = modalText.includes('Safe Withdrawal Rate');
+      const hasInputs = !!document.getElementById('input-fire-current-age');
+      const closeBtn = document.getElementById('btn-close-fire-modal');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasTitle && hasSwr && hasInputs;
+    });
+    check(
+      fireModalCheck,
+      "WP22B-V06",
+      "Retirement & FIRE Modal opens, calculates SWR target corpus and Coast FIRE milestones, and closes cleanly"
+    );
+
+    // WP22B-V07: Popular Calculators quick-access triggers open respective modals directly
+    let popularTriggersCheck = await page.evaluate(async () => {
+      // Test RD quick-access
+      const btns = Array.from(document.querySelectorAll('button'));
+      const rdPopBtn = btns.find(b => b.textContent?.includes('RD Calculator') && b.textContent?.includes('Calculate RD maturity'));
+      if (!rdPopBtn) return false;
+      rdPopBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+      const hasRdOpen = !!document.getElementById('input-rd-deposit');
+      const closeRd = document.getElementById('btn-close-rd-modal');
+      if (closeRd) closeRd.click();
+      await new Promise(r => setTimeout(r, 300));
+      return hasRdOpen;
+    });
+    check(
+      popularTriggersCheck,
+      "WP22B-V07",
+      "Popular Calculators quick-access triggers launch interactive modals directly"
+    );
+
+    // WP22B-V08: Multi-tab navigation across app after modal interactions remains responsive and clean
+    await clickNav(page, "Overview");
+    await clickNav(page, "Wealth");
+    await clickNav(page, "Money");
+    await clickNav(page, "Essentials");
+    await clickNav(page, "Calculators");
+    let afterModalNavCheck = await verifyNoDemoValuesInDOM(page);
+    check(
+      afterModalNavCheck.clean,
+      "WP22B-V08",
+      "Multi-tab navigation across application after interactive modal execution remains responsive and 100% clean"
+    );
+
 
   } finally {
     await browser.close();

@@ -3,6 +3,14 @@ import { FinancialMetricService } from '../services/FinancialMetricService';
 import { WealthIntelligenceService } from '../services/WealthIntelligenceService';
 import { EssentialsService } from '../services/EssentialsService';
 import { DateRangeService } from '../services/DateRangeService';
+import { Wp20Adapters } from '../services/mathematics/adapters/Wp20Adapters';
+import { XirrEngine, XirrFlowInput } from '../services/mathematics/solvers/XirrEngine';
+import { RecurringDepositEngine, RdCalculationInput } from '../services/mathematics/engines/RecurringDepositEngine';
+import { PpfEngine, PpfCalculationInput } from '../services/mathematics/engines/PpfEngine';
+import { SwpEngine, SwpCalculationInput } from '../services/mathematics/engines/SwpEngine';
+import { GoalReverseSipEngine, GoalReverseSipInput } from '../services/mathematics/engines/GoalReverseSipEngine';
+import { RetirementFireEngine, RetirementFireInput } from '../services/mathematics/engines/RetirementFireEngine';
+import { CalculationResult } from '../domain/mathematics/types';
 import {
   FinancialMetric,
   FinancialSeries,
@@ -238,6 +246,70 @@ export class FinancialQueries {
       profile,
       savingsRate: insights.savingsRate
     });
+  }
+  /* =========================================================================
+   * WP-22: Canonical Mathematical Intelligence Engine Queries
+   * ========================================================================= */
+
+  static calculateSip(
+    monthlyInvestment: number,
+    annualRate: number,
+    years: number,
+    stepUpPct: number = 0
+  ) {
+    return Wp20Adapters.calculateSip(monthlyInvestment, annualRate, years, stepUpPct);
+  }
+
+  static calculateLumpsum(
+    principal: number,
+    annualRate: number,
+    years: number,
+    expectedInflation: number = 6.0
+  ) {
+    return Wp20Adapters.calculateLumpsum(principal, annualRate, years, expectedInflation);
+  }
+
+  static calculateLoanEmi(
+    principal: number,
+    annualRate: number,
+    tenureMonths: number
+  ) {
+    return Wp20Adapters.calculateLoanEmi(principal, annualRate, tenureMonths);
+  }
+
+  static calculateCagr(
+    initialValue: number,
+    finalValue: number,
+    years: number
+  ) {
+    return Wp20Adapters.calculateCagr(initialValue, finalValue, years);
+  }
+
+  static calculateXirr(
+    cashFlows: XirrFlowInput[],
+    config?: Parameters<typeof XirrEngine.calculate>[1]
+  ) {
+    return XirrEngine.calculate(cashFlows, config);
+  }
+
+  static calculateRecurringDeposit(input: RdCalculationInput) {
+    return RecurringDepositEngine.calculate(input);
+  }
+
+  static calculatePpf(input: PpfCalculationInput) {
+    return PpfEngine.calculate(input);
+  }
+
+  static calculateSwp(input: SwpCalculationInput) {
+    return SwpEngine.calculate(input);
+  }
+
+  static calculateGoalReverseSip(input: GoalReverseSipInput) {
+    return GoalReverseSipEngine.calculate(input);
+  }
+
+  static calculateRetirementFire(input: RetirementFireInput) {
+    return RetirementFireEngine.calculate(input);
   }
 }
 

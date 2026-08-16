@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CalculatorsService } from '../../services/CalculatorsService';
+import { FinancialQueries } from '../../application/queries';
 import { CurrencyValue } from '../CurrencyValue';
+import { ProvenanceBadge } from '../ui/ProvenanceBadge';
 import { Landmark, Calendar, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
 
 export const LumpsumCalculator: React.FC = () => {
@@ -10,7 +11,15 @@ export const LumpsumCalculator: React.FC = () => {
   const [inflationRate, setInflationRate] = useState<number>(6.0);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
 
-  const result = CalculatorsService.calculateLumpsum(principal, annualRate, years, inflationRate);
+  const calcResult = FinancialQueries.calculateLumpsum(principal, annualRate, years, inflationRate);
+  const result = calcResult.data || {
+    investedAmount: 0,
+    estimatedReturns: 0,
+    totalValue: 0,
+    realPurchasingPower: 0,
+    absoluteGrowthMultiple: 0,
+    yearlyBreakdown: []
+  };
 
   const investedPct = result.totalValue > 0
     ? Math.round((result.investedAmount / result.totalValue) * 100)
@@ -252,6 +261,11 @@ export const LumpsumCalculator: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Institutional Provenance Badge */}
+      {calcResult.provenance && (
+        <ProvenanceBadge provenance={calcResult.provenance} />
+      )}
     </div>
   );
 };
