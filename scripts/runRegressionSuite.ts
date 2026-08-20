@@ -1,4 +1,5 @@
 import { IndexedDBStorageService } from '../src/services/IndexedDBStorageService';
+import * as XLSX from 'xlsx';
 import { repository } from '../src/repositories';
 import { MemoryRepository } from '../src/repositories/MemoryRepository';
 import { FinancialCommands as commands } from '../src/application/commands';
@@ -6,6 +7,7 @@ import { FinancialQueries as queries } from '../src/application/queries';
 import { FinancialMetricService } from '../src/services/FinancialMetricService';
 import { WealthIntelligenceService } from '../src/services/WealthIntelligenceService';
 import { Asset, BUDGET_CATEGORY_FAMILIES, ControlledAccountType } from '../src/domain/types';
+import { ImportPipelineService } from '../src/services/ImportPipelineService';
 import { useCanonicalLedger } from '../src/store/useCanonicalLedger';
 import { CanonicalNormalizationService } from '../src/services/mathematics/CanonicalNormalizationService';
 import { JcsSerializationService } from '../src/services/mathematics/JcsSerializationService';
@@ -2862,6 +2864,328 @@ not-a-date,Broken Row,ACH/BROKEN,invalid-amount,INCOME,HDFC Bank
     typeof (globalThis as any).FinancialQueries === 'function' || typeof queries === 'function',
     'Application query orchestrator conforms to canonical application interface contract',
     'WP22B-A16'
+  );
+
+  console.log('\n22. [Bank Statement Multi-Format Ingestion Suite (TEST-BANK-01 to TEST-BANK-25)]');
+
+  // TEST-BANK-01: Generic CSV valid import
+  const genCsv = `Date,Title,Narration,Amount,Type,Account\n2026-08-06,ITC Limited,ACH/C-/ITC LTD DIVIDEND/NSE0098,2100,INCOME,HDFC Bank`;
+  const resB1 = commands.importStatement(genCsv, 'Generic CSV', 'gen.csv');
+  assert(
+    resB1.appended === 1 && resB1.duplicates === 0 && resB1.invalidCount === 0 && resB1.detectedFormatId === 'generic_csv',
+    'Generic CSV valid statement imports successfully with correct format detection',
+    'TEST-BANK-01'
+  );
+
+  // TEST-BANK-02: Generic CSV signed negative amount -1250.00 normalizes to amount 1250.00 + Expense, preserving existing behavior.
+  const genNegCsv = `Date,Title,Narration,Amount,Type,Account\n2026-08-01,ATM Withdrawal,ATM Withdrawal,-1250.00,EXPENSE,HDFC Bank`;
+  const resB2 = commands.importStatement(genNegCsv, 'Generic CSV', 'neg.csv');
+  assert(
+    resB2.validRows[0]?.amount === 1250 && resB2.validRows[0]?.type === 'Expense',
+    'Generic CSV signed negative amount -1250.00 normalizes to amount 1250.00 + Expense, preserving existing behavior.',
+    'TEST-BANK-02'
+  );
+
+  // TEST-BANK-03: Formula injection values sanitized
+  const genFormCsv = `Date,Title,Narration,Amount,Type,Account\n2026-08-01,=cmd|'/C calc'!A0,=HYPERLINK("https://evil.com","Click"),500,INCOME,HDFC Bank`;
+  const resB3 = commands.importStatement(genFormCsv, 'Generic CSV', 'formula.csv');
+  assert(
+    resB3.validRows[0]?.title.includes('[Sanitized-Formula]') && resB3.validRows[0]?.narration.includes('[Sanitized-Formula]'),
+    'Formula injection values (=cmd|, =HYPERLINK) are safely sanitized before canonical entity creation',
+    'TEST-BANK-03'
+  );
+
+  // HDFC Statements Tests — fixture uses deterministic synthetic values, no PII
+  const hdfcSampleText = `HDFC BANK LTD
+STATEMENT OF ACCOUNT FOR 01/08/2026 TO 20/08/2026
+
+Date      Narration                         Chq./Ref.No.      Value Dt  Withdrawal Amt.  Deposit Amt.  Closing Balance
+01/08/26  MUTHOOTTU MINI FINAN00000000000078240843  0000262125430965  01/08/26                   153.00        138311.58
+17/08/26  ACH C- PCBL INT DIV 26 27-233237  0000002619328559  17/08/26                   36.00         138347.58
+19/08/26  NWD-512967XXXXXX8183-MC023601-TESTCITY  0000623110010073  19/08/26  3000.00                        135347.58
+19/08/26  NEFT CR-ICIC0099999-SYNTHFUND INDIA REA
+          L ESTATE TRUST-TESTPERSON SYNTHETIC  0000623142390670  19/08/26                   604.93        135952.51
+          SYNTHETIC-IN22623142390670
+
+STATEMENT SUMMARY
+TOTAL DEPOSITS: 793.93
+TOTAL WITHDRAWALS: 3000.00
+CLOSING BALANCE: 135952.51`;
+
+  // TEST-BANK-04: HDFC multi-indicator content detection
+  const hdfcDetectorRes = ImportPipelineService.processCSV(hdfcSampleText, [], 'HDFC Bank', 'hdfc_statement.txt');
+  assert(
+    hdfcDetectorRes.detectedFormatId === 'hdfc' && hdfcDetectorRes.formatDisplayName === 'HDFC Bank Statement',
+    'HDFC statement format is automatically detected via multi-indicator content signature',
+    'TEST-BANK-04'
+  );
+
+  // TEST-BANK-05: HDFC Credit transaction normalization
+  const pcblTx = hdfcDetectorRes.validRows.find(t => t.narration.includes('PCBL INT DIV'));
+  assert(
+    pcblTx?.amount === 36 && pcblTx?.type === 'Income',
+    'HDFC Credit transaction (Deposit = 36.00) normalizes to positive amount 36.00 and Income type',
+    'TEST-BANK-05'
+  );
+
+  // TEST-BANK-06: HDFC Debit transaction normalization
+  const nwdTx = hdfcDetectorRes.validRows.find(t => t.narration.includes('NWD-512967'));
+  assert(
+    nwdTx?.amount === 3000 && nwdTx?.type === 'Expense',
+    'HDFC Debit transaction (Withdrawal = 3000.00) normalizes to positive amount 3000.00 and Expense type',
+    'TEST-BANK-06'
+  );
+
+  // TEST-BANK-07: HDFC DD/MM/YY date normalization
+  assert(
+    pcblTx?.date === '2026-08-17',
+    'HDFC DD/MM/YY source date (17/08/26) normalizes to canonical ISO date 2026-08-17',
+    'TEST-BANK-07'
+  );
+
+  // TEST-BANK-08: HDFC multiline narration continuation merging
+  const synthfundTx = hdfcDetectorRes.validRows.find(t => t.narration.includes('SYNTHFUND INDIA REA'));
+  assert(
+    !!synthfundTx && synthfundTx.narration.includes('SYNTHETIC-IN22623142390670'),
+    'HDFC continuation lines append to preceding narration without creating split transactions or extra row counts',
+    'TEST-BANK-08'
+  );
+
+  // TEST-BANK-09: HDFC preamble metadata stripping
+  assert(
+    !hdfcDetectorRes.validRows.some(t => t.narration.includes('STATEMENT OF ACCOUNT')),
+    'HDFC opening account preamble lines are stripped without entering transaction validation',
+    'TEST-BANK-09'
+  );
+
+  // TEST-BANK-10: HDFC postamble summary stripping
+  assert(
+    !hdfcDetectorRes.validRows.some(t => t.narration.includes('STATEMENT SUMMARY') || t.narration.includes('TOTAL DEPOSITS')),
+    'HDFC statement summary postambles are stripped without entering transaction validation',
+    'TEST-BANK-10'
+  );
+
+  // TEST-BANK-11: Mandatory Muthootu End-to-End Test
+  const muthootuTx = hdfcDetectorRes.validRows.find(t => t.narration.includes('MUTHOOTTU MINI FINAN'));
+  assert(
+    !!muthootuTx && muthootuTx.date === '2026-08-01' && muthootuTx.amount === 153.00 && muthootuTx.type === 'Income' && muthootuTx.sourceRowNumber > 0,
+    'MANDATORY MUTHOOTU TEST: Original HDFC statement transaction parses as 2026-08-01, 153.00 Income',
+    'TEST-BANK-11'
+  );
+
+  // TEST-BANK-12: Indian comma number formatting
+  const indianCommaText = `Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance\n01/08/26,Large Transfer,REF123,01/08/26,,"1,38,311.58","1,38,311.58"`;
+  const resB12 = ImportPipelineService.processCSV(indianCommaText, [], 'HDFC Bank', 'comma.csv');
+  assert(
+    resB12.validRows[0]?.amount === 138311.58,
+    'Indian number formatting with commas (1,38,311.58) parses accurately to numeric float 138311.58',
+    'TEST-BANK-12'
+  );
+
+  // ICICI Statements Tests
+  const iciciSampleTable = `<table border="1">
+<tr><th>S No.</th><th>Value Date</th><th>Transaction Date</th><th>Cheque Number</th><th>Transaction Remarks</th><th>Withdrawal Amount(INR)</th><th>Deposit Amount(INR)</th><th>Balance(INR)</th></tr>
+<tr><td>1</td><td>17/08/2026</td><td>17/08/2026</td><td>CHQ001</td><td>Dividend Credit ICICI Bank</td><td></td><td>2500.00</td><td>52500.00</td></tr>
+<tr><td>2</td><td>18/08/2026</td><td>18/08/2026</td><td>CHQ002</td><td>Utility Bill Payment</td><td>1200.00</td><td></td><td>51300.00</td></tr>
+</table>`;
+
+  // TEST-BANK-13: ICICI multi-indicator content detection
+  const iciciDetectorRes = ImportPipelineService.processCSV(iciciSampleTable, [], 'ICICI Bank', 'icici_statement.xls');
+  assert(
+    iciciDetectorRes.detectedFormatId === 'icici' && iciciDetectorRes.formatDisplayName === 'ICICI Bank Statement',
+    'ICICI Bank HTML/XLS statement format is automatically detected via multi-indicator content signature',
+    'TEST-BANK-13'
+  );
+
+  // TEST-BANK-14: ICICI Credit normalization
+  const iciciDivTx = iciciDetectorRes.validRows.find(t => t.narration.includes('Dividend Credit'));
+  assert(
+    iciciDivTx?.amount === 2500 && iciciDivTx?.type === 'Income',
+    'ICICI Credit transaction (Deposit Amount = 2500.00) normalizes to positive 2500.00 Income',
+    'TEST-BANK-14'
+  );
+
+  // TEST-BANK-15: ICICI Debit normalization
+  const iciciBillTx = iciciDetectorRes.validRows.find(t => t.narration.includes('Utility Bill'));
+  assert(
+    iciciBillTx?.amount === 1200 && iciciBillTx?.type === 'Expense',
+    'ICICI Debit transaction (Withdrawal Amount = 1200.00) normalizes to positive 1200.00 Expense',
+    'TEST-BANK-15'
+  );
+
+  // TEST-BANK-16: ICICI Transaction Date mapping
+  assert(
+    iciciDivTx?.date === '2026-08-17',
+    'ICICI DD/MM/YYYY transaction date (17/08/2026) normalizes to canonical ISO date 2026-08-17',
+    'TEST-BANK-16'
+  );
+
+  // TEST-BANK-17: ICICI Cheque Number reference preservation
+  assert(
+    iciciDivTx?.sourceRowNumber > 0 && iciciBillTx?.sourceRowNumber > 0,
+    'ICICI statement row numbers and records are preserved accurately across HTML table parsing',
+    'TEST-BANK-17'
+  );
+
+  // TEST-BANK-18: ICICI preamble/footer stripping
+  const iciciWithMeta = `ICICI BANK STATEMENT FOR ACCOUNT 12345\n` + iciciSampleTable + `\nEnd of Statement Page 1`;
+  const iciciMetaRes = ImportPipelineService.processCSV(iciciWithMeta, [], 'ICICI Bank', 'icici.xls');
+  assert(
+    iciciMetaRes.validRows.length === 2 && !iciciMetaRes.validRows.some(t => t.narration.includes('ICICI BANK STATEMENT FOR ACCOUNT')),
+    'ICICI header preamble and footer lines are ignored without producing malformed transactions',
+    'TEST-BANK-18'
+  );
+
+  // SBI Statements Tests
+  const sbiSampleCsv = `Date,Details,Ref No/Cheque No,Debit,Credit,Balance
+18/08/2026," DEP TFR NEFT*ICIC0099999*IN22623041581819*IIF\n L SAMASTA FI   0099509044300 AT 05199 MADIPAKKAM",REF999, ,1.00,928.10
+19/08/2026," DEP TFR NEFT*ICIC0099999*IN22623142656536*MID\n LAND MICROFI   0099509044300 AT 05199 MADIPAKKAM",REF1000, ,604.93,1533.03
+20/08/2026,ATM WITHDRAWAL MADIPAKKAM,REF1001,500.00, ,1033.03`;
+
+  // TEST-BANK-19: SBI multi-indicator content detection
+  const sbiDetectorRes = ImportPipelineService.processCSV(sbiSampleCsv, [], 'SBI Bank', 'sbi_statement.csv');
+  assert(
+    sbiDetectorRes.detectedFormatId === 'sbi' && sbiDetectorRes.formatDisplayName === 'State Bank of India (SBI)',
+    'SBI statement format is automatically detected via multi-indicator content signature',
+    'TEST-BANK-19'
+  );
+
+  // TEST-BANK-20: SBI Credit normalization
+  const sbiCreditTx = sbiDetectorRes.validRows.find(t => t.narration.includes('SAMASTA FI'));
+  assert(
+    sbiCreditTx?.amount === 1 && sbiCreditTx?.type === 'Income' && sbiCreditTx?.date === '2026-08-18',
+    'SBI Credit transaction (Credit = 1.00) normalizes to date 2026-08-18, amount 1.00, Income',
+    'TEST-BANK-20'
+  );
+
+  // TEST-BANK-21: SBI Debit normalization
+  const sbiDebitTx = sbiDetectorRes.validRows.find(t => t.narration.includes('ATM WITHDRAWAL'));
+  assert(
+    sbiDebitTx?.amount === 500 && sbiDebitTx?.type === 'Expense' && sbiDebitTx?.date === '2026-08-20',
+    'SBI Debit transaction (Debit = 500.00) normalizes to amount 500.00, Expense',
+    'TEST-BANK-21'
+  );
+
+  // TEST-BANK-22: SBI multiline quoted Details parsing
+  assert(
+    sbiDetectorRes.validRows.length === 3 && !!sbiCreditTx && sbiCreditTx.narration.includes('MADIPAKKAM'),
+    'SBI quoted multiline Details fields are parsed as single logical records regardless of internal LF/CRLF',
+    'TEST-BANK-22'
+  );
+
+  // Cross-Engine Invariants
+  // TEST-BANK-23: Ambiguous row rejection (both debit and credit > 0 flagged as AMBIGUOUS)
+  const ambigCsv = `Date,Details,Ref No/Cheque No,Debit,Credit,Balance\n20/08/2026,Ambiguous Tx,REF100,500.00,500.00,1000.00`;
+  const resB23 = ImportPipelineService.processCSV(ambigCsv, [], 'SBI Bank', 'ambig.csv');
+  assert(
+    resB23.ambiguousCount === 1 && resB23.validRows.length === 0 && resB23.ambiguousRows[0]?.code === 'BOTH_DEBIT_AND_CREDIT_PRESENT',
+    'Rows with both Debit and Credit populated are flagged as AMBIGUOUS without silent selection',
+    'TEST-BANK-23'
+  );
+
+  // TEST-BANK-24: Exact re-import duplicate test
+  const firstImportRes = ImportPipelineService.processCSV(hdfcSampleText, [], 'HDFC Bank', 'hdfc.txt');
+  const secondImportRes = ImportPipelineService.processCSV(hdfcSampleText, firstImportRes.validRows, 'HDFC Bank', 'hdfc.txt');
+  assert(
+    firstImportRes.validRows.length === 4 && secondImportRes.validRows.length === 0 && secondImportRes.duplicateCount === 4,
+    'Exact re-import of HDFC native statement detects 100% duplicate fingerprints and appends 0 new rows',
+    'TEST-BANK-24'
+  );
+
+  // TEST-BANK-25: Cross-format fingerprint compatibility
+  const canonicalEquivalentCsv = `Date,Title,Narration,Amount,Type,Account\n2026-08-17,ACH C- PCBL INT DIV 26 27-233237,ACH C- PCBL INT DIV 26 27-233237,36,INCOME,HDFC Bank`;
+  const canonicalRes = ImportPipelineService.processCSV(canonicalEquivalentCsv, [], 'HDFC Bank', 'equivalent.csv');
+  const hdfcFp = pcblTx?.fingerprint;
+  const canonicalFp = canonicalRes.validRows[0]?.fingerprint;
+  assert(
+    hdfcFp === canonicalFp && !!hdfcFp,
+    'Cross-Format Fingerprint Compatibility: Bank-native HDFC record and equivalent canonical CSV produce 100% identical SHA-256 fingerprint',
+    'TEST-BANK-25'
+  );
+
+  // TEST-BANK-26: Generated native XLS binary
+  const iciciHeaders = ['S No.', 'Value Date', 'Transaction Date', 'Cheque Number', 'Transaction Remarks', 'Withdrawal Amount(INR)', 'Deposit Amount(INR)', 'Balance(INR)'];
+  const iciciWb = XLSX.utils.book_new();
+  const iciciWs = XLSX.utils.aoa_to_sheet([iciciHeaders, ['1', '17/08/2026', '17/08/2026', '0000002619328559', 'ACH/C/PCBL INT DIV/2026', '', '36.00', '442.38'], ['2', '18/08/2026', '18/08/2026', '0000002626679499', 'ACH/C/COAL INDIA DIVIDEND', '', '83.00', '525.38'], ['3', '19/08/2026', '19/08/2026', '0000623110010073', 'ATM CASH WITHDRAWAL CHENNAI', '3000.00', '', '660.38']]);
+  XLSX.utils.book_append_sheet(iciciWb, iciciWs, 'Sheet1');
+  const iciciBytes = XLSX.write(iciciWb, { type: 'array', bookType: 'xls' });
+  const iciciBinRes1 = ImportPipelineService.processBinaryFile(new Uint8Array(iciciBytes), [], 'ICICI Bank', 'ICICI_Test.xls');
+  assert(
+    iciciBinRes1.detectedFormatId === 'icici' && iciciBinRes1.validRows.length === 3,
+    'Generated native XLS binary correctly parsed and detected by ICICI adapter',
+    'TEST-BANK-26'
+  );
+
+  // TEST-BANK-27: Generated native XLSX binary
+  const sbiHeaders = ['Date', 'Details', 'Ref No/Cheque No', 'Debit', 'Credit', 'Balance'];
+  const sbiWb = XLSX.utils.book_new();
+  const sbiWs = XLSX.utils.aoa_to_sheet([sbiHeaders, ['18/08/2026', 'SAMASTA FI MADIPAKKAM', 'TRANSFER-999', '', '1.00', '928.10'], ['19/08/2026', 'MID LAND MICROFI', 'TRANSFER-1000', '', '604.93', '1533.03'], ['20/08/2026', 'ATM WITHDRAWAL MADIPAKKAM', 'CHQ-1001', '500.00', '', '1033.03']]);
+  XLSX.utils.book_append_sheet(sbiWb, sbiWs, 'Sheet1');
+  const sbiBytes = XLSX.write(sbiWb, { type: 'array', bookType: 'xlsx' });
+  const sbiBinRes1 = ImportPipelineService.processBinaryFile(new Uint8Array(sbiBytes), [], 'SBI Bank', 'SBI_Test.xlsx');
+  assert(
+    sbiBinRes1.detectedFormatId === 'sbi' && sbiBinRes1.validRows.length === 3,
+    'Generated native XLSX binary correctly parsed and detected by SBI adapter',
+    'TEST-BANK-27'
+  );
+
+  // TEST-BANK-28: Binary XLS duplicate
+  const iciciBinRes2 = ImportPipelineService.processBinaryFile(new Uint8Array(iciciBytes), iciciBinRes1.validRows, 'ICICI Bank', 'ICICI_Test.xls');
+  assert(
+    iciciBinRes2.validRows.length === 0 && iciciBinRes2.duplicateCount === 3,
+    'Exact re-import of binary XLS detects 100% duplicate fingerprints and appends 0 new rows',
+    'TEST-BANK-28'
+  );
+
+  // TEST-BANK-29: Binary XLSX duplicate
+  const sbiBinRes2 = ImportPipelineService.processBinaryFile(new Uint8Array(sbiBytes), sbiBinRes1.validRows, 'SBI Bank', 'SBI_Test.xlsx');
+  assert(
+    sbiBinRes2.validRows.length === 0 && sbiBinRes2.duplicateCount === 3,
+    'Exact re-import of binary XLSX detects 100% duplicate fingerprints and appends 0 new rows',
+    'TEST-BANK-29'
+  );
+
+  // TEST-BANK-30: Binary -> canonical fingerprint equivalent
+  const sbiText = `Date,Details,Ref No/Cheque No,Debit,Credit,Balance
+18/08/2026,SAMASTA FI MADIPAKKAM,TRANSFER-999,,1.00,928.10`;
+  const sbiTextRes = ImportPipelineService.processCSV(sbiText, [], 'SBI Bank', 'SBI_Test.csv');
+  assert(
+    sbiTextRes.validRows[0].fingerprint === sbiBinRes1.validRows[0].fingerprint,
+    'Binary parsing and text parsing produce identical SHA-256 fingerprint for the same record',
+    'TEST-BANK-30'
+  );
+
+  // TEST-BANK-31: Corrupt binary
+  const corruptBytes = new Uint8Array([0x00, 0x01, 0x02, 0x03]);
+  const corruptRes = ImportPipelineService.processBinaryFile(corruptBytes, [], 'Unknown', 'corrupt.xls');
+  assert(
+    corruptRes.unsupportedFormat === true && corruptRes.invalidRows[0].code === 'UNSUPPORTED_FORMAT',
+    'Corrupt binary Uint8Array is gracefully rejected with UNSUPPORTED_FORMAT',
+    'TEST-BANK-31'
+  );
+
+  // TEST-BANK-32: Formula/XSS sanitization in binary
+  const iciciXssWs = XLSX.utils.aoa_to_sheet([iciciHeaders, ['1', '17/08/2026', '17/08/2026', '0000002619328559', '=HYPERLINK("https://evil.com","Click")', '', '36.00', '442.38']]);
+  const iciciXssWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(iciciXssWb, iciciXssWs, 'Sheet1');
+  const iciciXssBytes = XLSX.write(iciciXssWb, { type: 'array', bookType: 'xls' });
+  const iciciXssRes = ImportPipelineService.processBinaryFile(new Uint8Array(iciciXssBytes), [], 'ICICI Bank', 'ICICI_XSS.xls');
+  assert(
+    iciciXssRes.validRows[0].narration.includes('[Sanitized-Formula]'),
+    'Formula injection in binary worksheet cell is safely sanitized before canonical entity creation',
+    'TEST-BANK-32'
+  );
+
+  // TEST-BANK-33: Prototype pollution payload rejection
+  const protoPollutionWs = XLSX.utils.aoa_to_sheet([iciciHeaders, ['1', '17/08/2026', '17/08/2026', '0000002619328559', '__proto__', '', '36.00', '442.38']]);
+  const protoPollutionWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(protoPollutionWb, protoPollutionWs, 'Sheet1');
+  const protoPollutionBytes = XLSX.write(protoPollutionWb, { type: 'array', bookType: 'xls' });
+  const protoPollutionRes = ImportPipelineService.processBinaryFile(new Uint8Array(protoPollutionBytes), [], 'ICICI Bank', 'ICICI_Proto.xls');
+  assert(
+    protoPollutionRes.validRows[0].narration === '__proto__',
+    'Prototype pollution payload in workbook is treated as ordinary text and causes no mutation or crash',
+    'TEST-BANK-33'
   );
 
   console.log('\n──────────────────────────────────────────────────────────────────────────');

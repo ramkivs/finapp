@@ -166,6 +166,12 @@ export class FinancialCommands {
     batchId: string;
     validRows: Transaction[];
     invalidCount: number;
+    ambiguousCount: number;
+    detectedFormatId: string;
+    formatDisplayName: string;
+    invalidRows: import('../services/ImportPipelineService').ImportRowIssue[];
+    ambiguousRows: import('../services/ImportPipelineService').ImportRowIssue[];
+    unsupportedFormat?: boolean;
   } {
     const textToParse = csvText || SAMPLE_DEFAULT_CSV;
     const existing = repository.transactions.findAllSync();
@@ -180,7 +186,13 @@ export class FinancialCommands {
       totalDetected: result.totalDetected,
       batchId: result.batchId,
       validRows: result.validRows,
-      invalidCount: result.invalidCount
+      invalidCount: result.invalidCount,
+      ambiguousCount: result.ambiguousCount,
+      detectedFormatId: result.detectedFormatId,
+      formatDisplayName: result.formatDisplayName,
+      invalidRows: result.invalidRows,
+      ambiguousRows: result.ambiguousRows,
+      unsupportedFormat: result.unsupportedFormat
     };
   }
 
