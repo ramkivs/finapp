@@ -1,14 +1,10 @@
 import { Transaction } from '../domain/types';
 import { Sha256Service } from './Sha256Service';
+import { CSVImportResult, ImportRowIssue, BankStatementRecord, BankStatementAdapter } from './import/ImportTypes';
+import { ImportFormatDetector } from './import/ImportFormatDetector';
+import { SpreadsheetStatementParser } from './import/parsers/SpreadsheetStatementParser';
 
-export interface CSVImportResult {
-  batchId: string;
-  totalDetected: number;
-  validRows: Transaction[];
-  duplicateCount: number;
-  ambiguousCount: number;
-  invalidCount: number;
-}
+export type { CSVImportResult, ImportRowIssue } from './import/ImportTypes';
 
 export class ImportPipelineService {
   /**
@@ -52,11 +48,13 @@ export class ImportPipelineService {
     return /^[=@]/.test(s) || /^[-+]\s*[^0-9\s]/.test(s) || /=(HYPERLINK|IMPORTXML|cmd\|)/i.test(s);
   }
 
+  /**
+   * Backward-compatibility helper retained for external callers/tests.
+   */
   static parseCSVText(csvText: string): Array<Record<string, string>> {
     const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
     if (lines.length < 2) return [];
 
-    // Smart CSV parser handling quotes and formula parentheses
     const parseLine = (line: string): string[] => {
       const result: string[] = [];
       let current = '';
@@ -84,7 +82,7 @@ export class ImportPipelineService {
       return result;
     };
 
-    const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/["']/g, ''));
+    const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, ''));
     const rows: Array<Record<string, string>> = [];
     for (let i = 1; i < lines.length; i++) {
       const values = parseLine(lines[i]).map(v => v.replace(/^["']|["']$/g, ''));
@@ -98,6 +96,11 @@ export class ImportPipelineService {
     return rows;
   }
 
+  /**
+   * TEXT PATH: Main bulk import entrypoint for CSV, TXT, HTML .xls, and HDFC fixed-width text files.
+   * Detects source format (HDFC, ICICI, SBI, Generic CSV), routes to matching bank adapter,
+   * normalizes rows into canonical Transactions, applies SHA-256 fingerprint deduplication.
+   */
   static processCSV(
     csvText: string,
     existingTransactions: Transaction[],
@@ -105,73 +108,120 @@ export class ImportPipelineService {
     fileName: string = 'upload.csv'
   ): CSVImportResult {
     const batchId = 'batch-' + Date.now();
-    const rows = this.parseCSVText(csvText);
+    const input = { kind: 'text' as const, content: csvText, fileName, selectedProvider: provider };
+
+    const { adapter, detection } = ImportFormatDetector.detect(input);
+
+    if (!detection.matched || !adapter) {
+      return this.unsupportedFormatResult(batchId);
+    }
+
+    const records = adapter.parse(input);
+    return this.processRecords(records, adapter, existingTransactions, provider, fileName, batchId);
+  }
+
+  /**
+   * BINARY PATH: Import entrypoint for native XLS and XLSX binary workbooks.
+   * Accepts raw Uint8Array bytes from browser FileReader.readAsArrayBuffer().
+   * Uses SheetJS 0.20.3 (vendored) to decode binary → ParsedCsvRow[].
+   * Detects bank format from decoded column headers (NOT from raw binary bytes).
+   * Converges with the text path at processRecords() — one shared normalization/fingerprint/dedup pipeline.
+   */
+  static processBinaryFile(
+    bytes: Uint8Array,
+    existingTransactions: Transaction[],
+    provider: string = 'Bank Import',
+    fileName: string = 'upload.xls'
+  ): CSVImportResult {
+    const batchId = 'batch-' + Date.now();
+
+    // Decode binary workbook bytes → ParsedCsvRow[] using SheetJS
+    const { headers, rows, error } = SpreadsheetStatementParser.parseBytes(bytes, fileName);
+
+    if (error || headers.length === 0) {
+      return {
+        batchId,
+        totalDetected: 0,
+        validRows: [],
+        duplicateCount: 0,
+        ambiguousCount: 0,
+        invalidCount: 1,
+        detectedFormatId: 'unsupported',
+        formatDisplayName: 'Binary Parse Error',
+        invalidRows: [{
+          rowNumber: 0,
+          severity: 'INVALID',
+          code: 'BINARY_PARSE_ERROR',
+          message: error || 'Unable to decode binary workbook — no column headers found.'
+        }],
+        ambiguousRows: [],
+        unsupportedFormat: true
+      };
+    }
+
+    // Detection operates on decoded headers + first sample row — NOT on raw binary bytes
+    const { adapter, detection } = ImportFormatDetector.detectFromRows(headers, rows, fileName, provider);
+
+    if (!detection.matched || !adapter) {
+      return this.unsupportedFormatResult(batchId);
+    }
+
+    // Parse decoded rows directly — no synthetic CSV reconstruction
+    const records = adapter.parseRows(rows, fileName);
+    return this.processRecords(records, adapter, existingTransactions, provider, fileName, batchId);
+  }
+
+  /**
+   * SHARED CONVERGENCE POINT: One implementation of normalization, security sanitization,
+   * fingerprinting, and duplicate detection used by both processCSV() and processBinaryFile().
+   * This is the single source of truth for import deduplication semantics.
+   */
+  private static processRecords(
+    records: BankStatementRecord[],
+    adapter: BankStatementAdapter,
+    existingTransactions: Transaction[],
+    provider: string,
+    fileName: string,
+    batchId: string
+  ): CSVImportResult {
     const validRows: Transaction[] = [];
+    const invalidRows: ImportRowIssue[] = [];
+    const ambiguousRows: ImportRowIssue[] = [];
     let duplicateCount = 0;
-    let invalidCount = 0;
-    let ambiguousCount = 0;
 
     const existingFingerprints = new Set(
-      existingTransactions.map(tx => this.generateFingerprint({
-        account: tx.account,
-        date: tx.date,
-        amount: tx.amount,
-        narration: tx.narration
-      }))
+      existingTransactions.map(tx =>
+        this.generateFingerprint({
+          account: tx.account,
+          date: tx.date,
+          amount: tx.amount,
+          narration: tx.narration
+        })
+      )
     );
 
     const seenInBatch = new Set<string>();
 
-    rows.forEach((row, index) => {
-      const dateVal = row['date'] || row['tx_date'] || row['transaction date'] || '';
-      const titleVal = this.sanitizeCell(row['title'] || row['description'] || row['name'] || row['payee'] || 'Imported Transaction');
-      const narrationVal = this.sanitizeCell(row['narration'] || row['memo'] || row['details'] || titleVal);
-      const amountRaw = row['amount'] || row['val'] || row['value'] || '0';
-      const typeValRaw = (row['type'] || row['tx_type'] || 'INCOME').toUpperCase();
-      const accountVal = this.sanitizeCell(row['account'] || row['bank'] || provider);
+    records.forEach(record => {
+      const normResult = adapter.normalize(record, {
+        provider,
+        fileName,
+        batchId
+      });
 
-      // Validate date (YYYY-MM-DD format check)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
-        invalidCount++;
+      if (normResult.issue) {
+        if (normResult.issue.severity === 'AMBIGUOUS') {
+          ambiguousRows.push(normResult.issue);
+        } else {
+          invalidRows.push(normResult.issue);
+        }
         return;
       }
 
-      // Allow negative or positive amounts (strip sign for absolute amount if needed, or parse directly)
-      const parsedNumeric = parseFloat(amountRaw);
-      if (isNaN(parsedNumeric) || parsedNumeric === 0) {
-        invalidCount++;
-        return;
-      }
+      if (!normResult.candidate) return;
 
-      const amount = Math.abs(parsedNumeric);
-
-      let type: 'Income' | 'Expense' | 'Transfer' = 'Income';
-      if (typeValRaw.includes('EXPENSE') || typeValRaw.includes('DEBIT') || parsedNumeric < 0) {
-        type = 'Expense';
-      } else if (typeValRaw.includes('TRANSFER')) {
-        type = 'Transfer';
-      }
-
-      const candidate: Transaction = {
-        id: `tx-import-${batchId}-${index + 1}`,
-        date: dateVal,
-        dateStr: dateVal,
-        title: titleVal,
-        narration: narrationVal,
-        account: accountVal,
-        type,
-        category: row['category'] || 'GENERAL',
-        amount,
-        status: 'CLEARED',
-        notes: `Imported from ${fileName}`,
-        importBatchId: batchId,
-        sourceProvider: provider,
-        sourceFile: fileName,
-        sourceRowNumber: index + 1
-      };
-
-      const fp = this.generateFingerprint(candidate);
-      candidate.fingerprint = fp;
+      const candidate = normResult.candidate;
+      const fp = candidate.fingerprint || this.generateFingerprint(candidate);
 
       if (existingFingerprints.has(fp) || seenInBatch.has(fp)) {
         duplicateCount++;
@@ -185,11 +235,37 @@ export class ImportPipelineService {
 
     return {
       batchId,
-      totalDetected: rows.length,
+      totalDetected: records.length,
       validRows,
       duplicateCount,
-      ambiguousCount,
-      invalidCount
+      ambiguousCount: ambiguousRows.length,
+      invalidCount: invalidRows.length,
+      detectedFormatId: adapter.id,
+      formatDisplayName: adapter.displayName,
+      invalidRows,
+      ambiguousRows,
+      unsupportedFormat: false
+    };
+  }
+
+  private static unsupportedFormatResult(batchId: string): CSVImportResult {
+    return {
+      batchId,
+      totalDetected: 0,
+      validRows: [],
+      duplicateCount: 0,
+      ambiguousCount: 0,
+      invalidCount: 0,
+      detectedFormatId: 'unsupported',
+      formatDisplayName: 'Unsupported / Unrecognized Statement Format',
+      invalidRows: [{
+        rowNumber: 0,
+        severity: 'INVALID',
+        code: 'UNSUPPORTED_FORMAT',
+        message: 'File content does not match any recognized bank (HDFC, ICICI, SBI) or generic CSV header signature.'
+      }],
+      ambiguousRows: [],
+      unsupportedFormat: true
     };
   }
 }
